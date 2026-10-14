@@ -36,6 +36,21 @@ export function setTab(tab) {
   window.scrollTo(0, 0);
 }
 
+// Switch tab, then open a sheet there, waiting for open sheets to finish closing first
+// (history.go is async; opening too early would get popped by the pending back navigation).
+export function goTo(tab, sheet, props = {}) {
+  const go = () => {
+    S.ui.tab = tab;
+    emit();
+    window.scrollTo(0, 0);
+    if (sheet) openSheet(sheet, props);
+  };
+  if (S.ui.sheets.length) {
+    window.addEventListener('popstate', () => setTimeout(go, 0), { once: true });
+    closeAllSheets();
+  } else go();
+}
+
 window.addEventListener('popstate', e => {
   const n = e.state?.sid === SID ? e.state.sheet : 0;
   if (S.ui.sheets.length > n) {

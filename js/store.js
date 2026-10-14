@@ -3,7 +3,9 @@ import { useState, useEffect } from './preact.js';
 import { db } from './db.js';
 import { uid, todayKey } from './util.js';
 
-const DEFAULT_SETTINGS = { units: 'imperial', usdaKey: '', region: 'united-states', tips: true };
+const DEFAULT_SETTINGS = { units: 'imperial', usdaKey: '', region: 'united-states', tips: true, anthropicKey: '', aiModel: 'claude-opus-5-5' };
+// Secrets never go into backup files.
+const SECRET_SETTINGS = { usdaKey: '', anthropicKey: '' };
 const freshMeta = () => ({ insights: {}, muted: {}, altSeen: {}, checkIns: [], lastCheckIn: null });
 
 export const S = {
@@ -13,6 +15,7 @@ export const S = {
   settings: { ...DEFAULT_SETTINGS },
   meta: freshMeta(),
   altCache: {},
+  meals: [], // saved meals: { id, name, items: [entry-like], createdAt, usedAt }
   foods: new Map(),
   byBarcode: new Map(),
   entries: [],
@@ -114,6 +117,7 @@ export async function init() {
     S.settings = { ...DEFAULT_SETTINGS, ...(kv.settings || {}) };
     S.meta = { ...freshMeta(), ...(kv.meta || {}) };
     S.altCache = kv.altCache || {};
+    S.meals = kv.meals || [];
     foods.forEach(indexFood);
     S.entries = entries;
     S.weights = weights.sort((a, b) => a.date.localeCompare(b.date));
@@ -145,6 +149,26 @@ export async function saveMeta(patch) {
 export async function saveAltCache(cache) {
   S.altCache = cache;
   await save('kv', cache, 'altCache');
+}
+
+// ---- saved meals ----
+const mealItem = ({ id, createdAt, date, meal, ...rest }) => rest;
+export async function saveMealTemplate(name, entries) {
+  const m = { id: uid(), name, items: entries.map(mealItem), createdAt: Date.now(), usedAt: Date.now() };
+  S.meals = [m, ...S.meals];
+  emit();
+  await save('kv', S.meals, 'meals');
+  return m;
+}
+export async function updateMealTemplate(m) {
+  S.meals = S.meals.map(x => (x.id === m.id ? m : x));
+  emit();
+  await save('kv', S.meals, 'meals');
+}
+export async function deleteMealTemplate(id) {
+  S.meals = S.meals.filter(x => x.id !== id);
+  emit();
+  await save('kv', S.meals, 'meals');
 }
 
 export async function upsertFood(food) {
@@ -219,8 +243,9 @@ export function exportData() {
     version: 1,
     exportedAt: new Date().toISOString(),
     profile: S.profile,
-    settings: { ...S.settings, usdaKey: '' },
+    settings: { ...S.settings, ...SECRET_SETTINGS },
     meta: S.meta,
+    meals: S.meals,
     foods: [...S.foods.values()],
     entries: S.entries,
     weights: S.weights,
@@ -229,9 +254,10 @@ export function exportData() {
 
 export async function importData(d) {
   if (!d || d.app !== 'tally' || !Array.isArray(d.entries)) throw new Error('This file isn’t a Tally backup.');
-  const settings = { ...DEFAULT_SETTINGS, ...(d.settings || {}), usdaKey: S.settings.usdaKey };
+  // Keep this device's keys; backups never contain them.
+  const settings = { ...DEFAULT_SETTINGS, ...(d.settings || {}), usdaKey: S.settings.usdaKey, anthropicKey: S.settings.anthropicKey };
   const payload = {
-    kv: { profile: d.profile, settings, meta: { ...freshMeta(), ...(d.meta || {}) } },
+    kv: { profile: d.profile, settings, meta: { ...freshMeta(), ...(d.meta || {}) }, meals: d.meals || [] },
     foods: d.foods || [],
     entries: d.entries,
     weights: d.weights || [],
@@ -240,6 +266,7 @@ export async function importData(d) {
   S.profile = d.profile || null;
   S.settings = settings;
   S.meta = payload.kv.meta;
+  S.meals = payload.kv.meals;
   S.foods = new Map();
   S.byBarcode = new Map();
   payload.foods.forEach(indexFood);
@@ -251,7 +278,7 @@ export async function importData(d) {
 export async function eraseAll() {
   if (!S.memoryOnly) await db.replaceAll({});
   Object.assign(S, {
-    profile: null, settings: { ...DEFAULT_SETTINGS }, meta: freshMeta(), altCache: {},
+    profile: null, settings: { ...DEFAULT_SETTINGS }, meta: freshMeta(), altCache: {}, meals: [],
     foods: new Map(), byBarcode: new Map(), entries: [], weights: [],
   });
   S.ui = { tab: 'today', date: todayKey(), sheets: [], toast: null };

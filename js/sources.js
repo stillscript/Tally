@@ -28,20 +28,24 @@ export const SOURCE_LABEL = {
   usda: 'USDA · manufacturer label data',
   'usda-generic': 'USDA · lab-analyzed',
   off: 'Open Food Facts · community data',
+  label: 'Manufacturer label',
   custom: 'Your entry',
+  ai: 'Claude estimate · from photo',
+  'ai-restaurant': 'Claude estimate · restaurant data',
 };
 
 export const usdaKey = () => (S.settings.usdaKey || '').trim() || 'DEMO_KEY';
 export const hasUsdaKey = () => usdaKey() !== 'DEMO_KEY';
 
 // Open Food Facts' edge sometimes drops the first request for an uncached query
-// (it surfaces as a CORS "Failed to fetch"); an identical retry succeeds.
+// (it surfaces as a CORS "Failed to fetch") or answers 502/503/504 under load;
+// an identical retry usually succeeds.
 async function getJSON(url, ms = 12000) {
   for (const wait of [600, 1500]) {
     try {
       return await getJSONOnce(url, ms);
     } catch (e) {
-      if (e.code !== 'network') throw e;
+      if (e.code !== 'network' && e.code !== 'server') throw e;
       await new Promise(r => setTimeout(r, wait));
     }
   }
@@ -56,6 +60,7 @@ async function getJSONOnce(url, ms) {
     if (r.status === 404) return null;
     if (r.status === 429) throw Object.assign(new Error('Rate limited'), { code: 'rate' });
     if (r.status === 403 || r.status === 401) throw Object.assign(new Error('Key rejected'), { code: 'key' });
+    if ([502, 503, 504].includes(r.status)) throw Object.assign(new Error('HTTP ' + r.status), { code: 'server' });
     if (!r.ok) throw Object.assign(new Error('HTTP ' + r.status), { code: 'http' });
     return await r.json();
   } catch (e) {
@@ -105,6 +110,7 @@ export function assessQuality(n) {
 // ---------- servings ----------
 export function unitsFor(food) {
   const list = (food.servings || []).map((s, i) => ({ key: 's' + i, label: s.label, g: s.g, serving: true }));
+  if (food.portionOnly && list.length) return list; // restaurant orders have no meaningful gram weight
   if (food.base === 'ml') list.push({ key: 'ml', label: 'ml', g: 1 }, { key: 'floz', label: 'fl oz', g: ML_PER_FLOZ });
   else list.push({ key: 'g', label: 'g', g: 1 }, { key: 'oz', label: 'oz', g: G_PER_OZ });
   return list;
@@ -116,7 +122,7 @@ export function findUnit(food, key) {
 export function defaultAmount(food) {
   const units = unitsFor(food);
   if (food.last && units.some(u => u.key === food.last.unit)) return { ...food.last };
-  if (food.servings?.length && food.source !== 'usda-generic') return { qty: 1, unit: 's0' };
+  if (food.servings?.length && (food.source !== 'usda-generic' || food.curated)) return { qty: 1, unit: 's0' };
   return { qty: 100, unit: food.base === 'ml' ? 'ml' : 'g' };
 }
 export function amountText(qty, unit) {
@@ -333,11 +339,21 @@ function parseOff(p) {
   return food;
 }
 
+// Products can be filed under the 13- or 12-digit form, and one form's request can time out
+// while the other answers instantly (seen with Coca-Cola cans), so try each form in turn.
 async function offByBarcode(n) {
-  const code = n.ean13 || n.ean8 || n.display;
-  const j = await getJSON(`${OFF}/api/v2/product/${code}.json?fields=${OFF_FIELDS}`);
-  if (!j || j.status !== 1 || !j.product) return null;
-  return parseOff(j.product);
+  const codes = [...new Set([n.ean13, n.upcA, n.ean8, n.display].filter(Boolean))];
+  let lastErr = null;
+  for (const code of codes) {
+    try {
+      const j = await getJSON(`${OFF}/api/v2/product/${code}.json?fields=${OFF_FIELDS}`);
+      if (j && j.status === 1 && j.product) return parseOff(j.product);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  if (lastErr) throw lastErr;
+  return null;
 }
 
 // Full-text search. Open Food Facts allows ~10 searches/minute, so only run on submit.

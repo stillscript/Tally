@@ -31,14 +31,18 @@ export function formulaTdee(p, kg) {
   return bmr(p, kg) * (ACTIVITY.find(a => a.id === p.activity)?.f || 1.375);
 }
 
+// Protein per kg of goal weight. People who lift get the higher end of the evidence range
+// (~1.6–2.4 g/kg in a deficit) to hold on to muscle; profiles from before this setting count as lifting.
+export const lifts = p => p.lifts !== false;
+export const proteinPerKg = p => (lifts(p) ? 2.0 : 1.6);
+
 export function computeTargets(p, tdee, kg) {
   const atGoal = kg <= p.goalWeightKg + 0.3;
   const deficit = atGoal ? 0 : (paceOf(p).pct / 100) * kg * KCAL_PER_KG / 7;
   const floor = p.sex === 'male' ? 1500 : 1200;
   const raw = tdee - deficit;
   const kcal = Math.round(Math.max(floor, raw) / 10) * 10;
-  // Protein ~2 g per kg of goal weight (≈0.9 g/lb): the range shown to protect muscle in a deficit.
-  const protein = Math.round((2.0 * p.goalWeightKg) / 5) * 5;
+  const protein = Math.round((proteinPerKg(p) * p.goalWeightKg) / 5) * 5;
   // Fat: at least 25% of calories, never below 0.6 g/kg goal weight.
   const fat = Math.round(Math.max(0.6 * p.goalWeightKg, (0.25 * kcal) / 9));
   const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));

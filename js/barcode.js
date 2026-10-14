@@ -45,7 +45,8 @@ const fromEan8 = d => ({ gtin14: d.padStart(14, '0'), ean13: null, upcA: null, e
 // Returns { gtin14, ean13, upcA, display, alt? } or null when the digits fail the check digit.
 export function normalizeBarcode(raw, format) {
   const d = digitsOnly(raw);
-  if (format === 'upc_e' || d.length === 6 || d.length === 7) {
+  // Some decoders report UPC-E already expanded to 12 digits; only expand the short form.
+  if ((format === 'upc_e' && d.length <= 8) || d.length === 6 || d.length === 7) {
     const a = upcEtoA(d);
     return a ? fromUpcA(a) : null;
   }

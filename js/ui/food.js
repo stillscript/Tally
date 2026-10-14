@@ -179,6 +179,8 @@ export function FoodSheet({ food: given, barcode, format, entry, meal: givenMeal
     ${incomplete && html`<${Note} tone="warn">This entry is missing calories or macros. Tap the pencil to fill them in from the label.<//>`}
     ${!incomplete && !food.verified && (q.includes('mismatch') || q.includes('impossible') || q.includes('off-flagged')) && html`<${Note} tone="warn">
       These numbers don’t add up (calories vs. protein/carbs/fat). It may be fiber or sugar alcohols, or a data error — worth a glance at the label.<//>`}
+    ${(food.aiNotes || food.sources?.length) && html`<p class="muted small ai-note">${food.aiNotes || ''}
+      ${(food.sources || []).slice(0, 3).map(u => { let h = u; try { h = new URL(u).hostname.replace(/^www\./, ''); } catch {} return html` <a href=${u} target="_blank" rel="noopener">${h}</a>`; })}</p>`}
     ${!food.verified && food.conflict && html`<${Note} tone="info">
       ${food.conflict.source} lists ${fmtInt(food.conflict.kcal100)} kcal per 100 ${food.base} instead of ${fmtInt(food.per100.kcal)}. USDA’s figure comes from the manufacturer; if your label differs, tap the pencil.<//>`}
 

@@ -72,13 +72,14 @@ export function Ring({ value, max, size = 176, stroke = 14, over }) {
   </svg>`;
 }
 
-export function MacroBar({ label, value, target, cls }) {
+export function MacroBar({ label, value, target, cls, note }) {
   const frac = target > 0 ? Math.min(1, value / target) : 0;
   const over = cls !== 'protein' && value > target * 1.08;
   return html`<div class=${'macro ' + cls}>
     <div class="macro-top"><span class="macro-label">${label}</span>
       <span class="macro-num"><b>${fmtInt(value)}</b> / ${fmtInt(target)} g</span></div>
     <div class="bar"><div class=${'bar-fill' + (over ? ' over' : '')} style=${{ width: frac * 100 + '%' }}></div></div>
+    ${note && html`<span class="macro-note">${note}</span>`}
   </div>`;
 }
 

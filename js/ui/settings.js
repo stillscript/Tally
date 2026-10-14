@@ -1,6 +1,8 @@
 import { html, useState, useRef } from '../preact.js';
 import { S, saveProfile, saveSettings, saveMeta, exportData, importData, eraseAll, toast } from '../store.js';
-import { computeTargets, latestTrendKg, formulaTdee, paceOf, ACTIVITY } from '../goals.js';
+import { computeTargets, latestTrendKg, formulaTdee, paceOf, ACTIVITY, lifts } from '../goals.js';
+import { AI_MODELS, hasAiKey } from '../ai.js';
+import { copySummary } from './ai.js';
 import { verifyUsdaKey, hasUsdaKey } from '../sources.js';
 import { Sheet, Seg, Field, NumField, Note } from './common.js';
 import { Icon } from './icons.js';
@@ -90,13 +92,23 @@ export function Settings() {
         <div class="carbs"><b>${fmtInt(p.targets.carbs)}g</b><span>carbs</span></div>
         <div class="fat"><b>${fmtInt(p.targets.fat)}g</b><span>fat</span></div>
       </div>
-      <p class="muted small">${p.manualTargets ? 'Set by you.' : 'Recommended from your profile and progress; refined at each weekly check-in.'}</p>
+      <p class="small">${lifts(p) ? html`<b>Protein is set higher because you lift</b>, to keep muscle while you lose fat. ` : ''}${p.manualTargets ? 'Targets set by you.' : 'Refined at each weekly check-in.'}</p>
+      <button class="btn small ghost" onClick=${() => openSheet('targets-info')}><${Icon} n="info" size=${16} /> How these are set</button>
+    </section>
+
+    <section class="card">
+      <header class="card-head"><h2>Claude</h2>
+        <button class="btn small" onClick=${() => openSheet('ai-setup')}>${hasAiKey() ? 'Change' : 'Connect'}</button></header>
+      <p class="small">${hasAiKey()
+        ? html`Connected · ${AI_MODELS.find(m => m.id === S.settings.aiModel)?.label || S.settings.aiModel}. Meal photos, restaurant lookups and “Ask Claude” are on.`
+        : 'Connect your Anthropic API key to estimate meals from photos, look up restaurant orders, and ask questions about your progress.'}</p>
+      <button class="btn small ghost" onClick=${copySummary}><${Icon} n="copy" size=${16} /> Copy my log for a Claude chat (free)</button>
     </section>
 
     <section class="card">
       <header class="card-head"><h2>Goal & profile</h2>
         <button class="btn small" onClick=${() => openSheet('profile')}>Edit</button></header>
-      <p>Goal <b>${fmtW(p.goalWeightKg, units)} ${wUnit(units)}</b> · ${paceOf(p).label} pace · ${ACTIVITY.find(a => a.id === p.activity)?.label}</p>
+      <p>Goal <b>${fmtW(p.goalWeightKg, units)} ${wUnit(units)}</b> · ${paceOf(p).label} pace · ${ACTIVITY.find(a => a.id === p.activity)?.label} · ${lifts(p) ? 'lifts weights' : 'no lifting'}</p>
     </section>
 
     <section class="card">
@@ -168,6 +180,7 @@ export function ProfileSheet() {
       goalWeightKg: fromDisplayWeight(num(d.goal), d.units),
       pace: d.pace,
       activity: d.activity,
+      lifts: d.lifts !== false,
     };
     // Until the adaptive estimate kicks in, a profile change also changes the formula burn.
     if (next.tdeeSource !== 'adaptive') next.tdee = Math.round(formulaTdee(next, kg) / 10) * 10;

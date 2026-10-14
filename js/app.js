@@ -1,5 +1,5 @@
 import { html, render, useEffect } from './preact.js';
-import { S, useStore, init, emit } from './store.js';
+import { S, useStore, init, emit, toast } from './store.js';
 import { preloadScanner } from './scanner.js';
 import { Today } from './ui/today.js';
 import { Progress } from './ui/progress.js';
@@ -78,5 +78,11 @@ init();
 render(html`<${App} />`, document.getElementById('app'));
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // When an update you pushed finishes installing, offer a reload. Your data isn't touched:
+  // it lives in on-device storage, separate from the app's files.
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController) toast('Tally was updated', { label: 'Reload', fn: () => location.reload() });
+  });
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }

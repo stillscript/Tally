@@ -66,16 +66,19 @@ export async function startScanner(video, { onCode }) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   let stopped = false;
-  let last = null;
+  let frame = 0;
+  const recent = []; // codes seen in the last few frames
 
   async function tick() {
     if (stopped) return;
     try {
       const vw = video.videoWidth, vh = video.videoHeight;
       if (vw && vh && video.readyState >= 2) {
-        // Decode the middle band of the frame (where the guide box is) — faster and fewer misreads.
-        const cw = Math.round(vw * 0.9), ch = Math.round(vh * 0.55);
-        const scale = Math.min(1, 1280 / cw);
+        // Alternate between the middle band (where the guide box is: faster, fewer misreads)
+        // and the whole frame (catches cans held sideways or barcodes off to one side).
+        const full = frame++ % 2 === 1;
+        const cw = full ? vw : Math.round(vw * 0.9), ch = full ? vh : Math.round(vh * 0.55);
+        const scale = Math.min(1, 1280 / Math.max(cw, ch));
         canvas.width = Math.round(cw * scale);
         canvas.height = Math.round(ch * scale);
         ctx.drawImage(video, (vw - cw) / 2, (vh - ch) / 2, cw, ch, 0, 0, canvas.width, canvas.height);
@@ -83,21 +86,24 @@ export async function startScanner(video, { onCode }) {
         for (const b of found) {
           const n = normalizeBarcode(b.rawValue, b.format);
           if (!n) continue;
-          // Require two matching reads in a row to rule out partial-frame misreads.
-          if (last === n.gtin14) {
+          // 12/13-digit codes carry a strong check digit: one read is enough.
+          // Short 8-digit codes (cans, small packs) must repeat once within a few frames.
+          const short = String(b.rawValue).replace(/\D/g, '').length <= 8;
+          if (!short || recent.includes(n.gtin14)) {
             stopped = true;
             navigator.vibrate?.(35);
             onCode({ raw: b.rawValue, format: b.format, n });
             return;
           }
-          last = n.gtin14;
+          recent.push(n.gtin14);
+          if (recent.length > 6) recent.shift();
           break;
         }
       }
     } catch (e) {
       // Individual frame failures are normal; keep going.
     }
-    if (!stopped) setTimeout(tick, 70);
+    if (!stopped) setTimeout(tick, 60);
   }
   tick();
 

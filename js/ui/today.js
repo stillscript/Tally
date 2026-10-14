@@ -1,11 +1,11 @@
 import { html, useMemo } from '../preact.js';
 import { S, emit, entriesFor, dayTotals, addEntries, toast, saveMeta } from '../store.js';
-import { latestTrendKg, checkInDue } from '../goals.js';
+import { latestTrendKg, checkInDue, lifts } from '../goals.js';
 import { proteinFriendlyFoods } from '../insights.js';
-import { nutrientsFor, defaultAmount, findUnit } from '../sources.js';
+import { nutrientsFor, defaultAmount, findUnit, hasUsdaKey } from '../sources.js';
 import { Ring, MacroBar } from './common.js';
 import { Icon } from './icons.js';
-import { openSheet } from './nav.js';
+import { openSheet, goTo } from './nav.js';
 import { MEALS, todayKey, addDays, prettyDate, fmtInt, fmtG, fmtW, wUnit, mealForTime } from '../util.js';
 
 function go(delta) {
@@ -43,6 +43,21 @@ function Meal({ meal, date, list }) {
     ${!list.length && yesterday.length > 0 && html`<button class="copy-link" onClick=${copy}>
       <${Icon} n="copy" size=${16} /> Same as yesterday? Copy ${yesterday.length} item${yesterday.length > 1 ? 's' : ''} · ${fmtInt(yesterday.reduce((s, e) => s + e.n.kcal, 0))} kcal
     </button>`}
+    ${list.length >= 2 && html`<button class="copy-link subtle" onClick=${() => openSheet('save-meal', { date, meal: meal.id })}>
+      <${Icon} n="save" size=${16} /> Save as a meal for one-tap logging
+    </button>`}
+  </section>`;
+}
+
+// One-time setup reminder: the shared USDA demo key runs out after ~10 lookups an hour.
+function KeyCard() {
+  if (hasUsdaKey() || S.meta.usdaCardHidden) return null;
+  return html`<section class="card setup-card">
+    <div><b>Finish setup: free USDA key</b>
+      <p class="small muted">Barcode lookups share a demo key that runs out after about 10 scans an hour. Your own key takes a minute and lifts that to ~1,000.</p>
+      <div class="row-btns"><button class="btn small primary" onClick=${() => goTo('settings')}>Set it up</button>
+        <button class="btn small ghost" onClick=${() => { saveMeta({ usdaCardHidden: true }); emit(); }}>Later</button></div>
+    </div>
   </section>`;
 }
 
@@ -91,13 +106,16 @@ export function Today() {
           <span class="ring-label">${over ? 'kcal over' : 'kcal left'}</span>
         </div>
       </div>
-      <div class="summary-side">
-        <div class="eaten"><span><b>${fmtInt(tot.kcal)}</b> eaten</span><span class="muted">of ${fmtInt(t.kcal)}</span></div>
-        <${MacroBar} label="Protein" value=${tot.p} target=${t.protein} cls="protein" />
+      <button class="summary-side" onClick=${() => openSheet('targets-info')} aria-label="How your targets are set">
+        <span class="eaten"><span><b>${fmtInt(tot.kcal)}</b> eaten</span><span class="muted">of ${fmtInt(t.kcal)} <${Icon} n="info" size=${14} className="inline-icon" /></span></span>
+        <${MacroBar} label="Protein" value=${tot.p} target=${t.protein} cls="protein"
+          note=${lifts(S.profile) && !S.profile.manualTargets ? 'set higher because you lift' : null} />
         <${MacroBar} label="Carbs" value=${tot.c} target=${t.carbs} cls="carbs" />
         <${MacroBar} label="Fat" value=${tot.f} target=${t.fat} cls="fat" />
-      </div>
+      </button>
     </section>
+
+    ${isToday && html`<${KeyCard} />`}
 
     <div class="pills">
       <button class="pill" onClick=${() => openSheet('weight', { date })}>

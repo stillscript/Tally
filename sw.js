@@ -1,15 +1,16 @@
 // Offline support: the app shell and libraries are cached; food lookups always go to the network.
 // Bump VERSION whenever files change so phones pick up the update.
-const VERSION = 'tally-v1';
+const VERSION = 'tally-v2';
 const SHELL = [
   './', './index.html', './styles.css', './manifest.webmanifest',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   './js/app.js', './js/preact.js', './js/util.js', './js/db.js', './js/store.js', './js/barcode.js',
-  './js/sources.js', './js/goals.js', './js/insights.js', './js/scanner.js',
+  './js/sources.js', './js/search.js', './js/goals.js', './js/insights.js', './js/scanner.js', './js/ai.js', './js/summary.js',
+  './js/data/common-foods.js', './js/data/brand-drinks.js',
   './js/ui/icons.js', './js/ui/nav.js', './js/ui/common.js', './js/ui/host.js', './js/ui/today.js',
   './js/ui/food.js', './js/ui/scanner-sheet.js', './js/ui/add.js', './js/ui/quickadd.js', './js/ui/label.js',
   './js/ui/weight.js', './js/ui/checkin.js', './js/ui/progress.js', './js/ui/charts.js', './js/ui/settings.js',
-  './js/ui/onboarding.js', './js/ui/profile-form.js',
+  './js/ui/onboarding.js', './js/ui/profile-form.js', './js/ui/explain.js', './js/ui/meals.js', './js/ui/ai.js',
 ];
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net'];
 const CDN_PRELOAD = [
@@ -20,7 +21,8 @@ const CDN_PRELOAD = [
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(VERSION);
-    await c.addAll(SHELL);
+    // Bypass the browser's HTTP cache so a new version never mixes in stale files.
+    await c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })));
     await Promise.all(CDN_PRELOAD.map(u => c.add(new Request(u, { mode: 'cors' })).catch(() => {})));
     await self.skipWaiting();
   })());

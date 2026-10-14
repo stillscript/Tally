@@ -8,6 +8,9 @@ import { LabelSheet } from './label.js';
 import { WeightSheet } from './weight.js';
 import { CheckInSheet } from './checkin.js';
 import { ProfileSheet, TargetsSheet } from './settings.js';
+import { TargetsInfoSheet } from './explain.js';
+import { SaveMealSheet, MealTemplateSheet } from './meals.js';
+import { AiSetupSheet, PhotoSheet, RestaurantSheet, CoachSheet } from './ai.js';
 
 const SHEETS = {
   food: FoodSheet,
@@ -19,6 +22,13 @@ const SHEETS = {
   checkin: CheckInSheet,
   profile: ProfileSheet,
   targets: TargetsSheet,
+  'targets-info': TargetsInfoSheet,
+  'save-meal': SaveMealSheet,
+  'meal-template': MealTemplateSheet,
+  'ai-setup': AiSetupSheet,
+  photo: PhotoSheet,
+  restaurant: RestaurantSheet,
+  coach: CoachSheet,
 };
 
 export function SheetHost() {

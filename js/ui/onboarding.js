@@ -24,6 +24,7 @@ export function Onboarding() {
     goalWeightKg: fromDisplayWeight(num(d.goal) || 0, d.units),
     pace: d.pace,
     activity: d.activity,
+    lifts: d.lifts !== false,
   };
   const tdee = step === 3 ? Math.round(formulaTdee(profile, weightKg) / 10) * 10 : 0;
   const targets = step === 3 ? computeTargets(profile, tdee, weightKg) : null;
@@ -96,7 +97,9 @@ export function Onboarding() {
       <li>Estimated burn today: <b>${fmtInt(tdee)} kcal</b>. ${deficit > 0
         ? html`Eating ${fmtInt(targets.kcal)} is a ${fmtInt(deficit)} kcal daily deficit — about <b>${round(toDisplayWeight(perWeek, d.units), 1)} ${u} a week</b>.`
         : 'You’re at your goal, so this is a maintenance target.'}</li>
-      <li><b>Protein is set high</b> (about ${round(targets.protein / toDisplayWeight(profile.goalWeightKg, d.units), 2)} g per ${u} of goal weight) to protect muscle while you lose fat. It’s the number to prioritize.</li>
+      <li>${profile.lifts
+        ? html`<b>Protein is set high because you lift</b> (about ${round(targets.protein / toDisplayWeight(profile.goalWeightKg, d.units), 1)} g per ${u} of goal weight) to protect muscle while you lose fat. It’s the number to prioritize.`
+        : html`<b>Protein</b> is about ${round(targets.protein / toDisplayWeight(profile.goalWeightKg, d.units), 1)} g per ${u} of goal weight, enough to protect muscle while you lose fat. If you start lifting, turn that on in Settings and it goes up.`}</li>
       <li><b>It adapts.</b> Weigh in most mornings and log honestly; every week Tally compares the two and fine-tunes your calories.</li>
       ${eta && html`<li>At this pace you’d reach ${round(toDisplayWeight(profile.goalWeightKg, d.units), 1)} ${u} around <b>${parseKey(eta).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</b>.</li>`}
     </ul>
