@@ -1,3 +1,4 @@
+import '../version.js';
 import { html, render, useEffect } from './preact.js';
 import { S, useStore, init, emit, toast } from './store.js';
 import { preloadScanner } from './scanner.js';

@@ -1,8 +1,9 @@
 // Offline support: the app shell and libraries are cached; food lookups always go to the network.
-// Bump VERSION whenever files change so phones pick up the update.
-const VERSION = 'tally-v2';
+// The version comes from version.js: bump it there whenever files change so phones pick up the update.
+importScripts('./version.js');
+const VERSION = 'tally-' + self.TALLY_VERSION;
 const SHELL = [
-  './', './index.html', './styles.css', './manifest.webmanifest',
+  './', './index.html', './styles.css', './manifest.webmanifest', './version.js',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   './js/app.js', './js/preact.js', './js/util.js', './js/db.js', './js/store.js', './js/barcode.js',
   './js/sources.js', './js/search.js', './js/goals.js', './js/insights.js', './js/scanner.js', './js/ai.js', './js/summary.js',

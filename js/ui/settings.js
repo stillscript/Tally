@@ -10,6 +10,19 @@ import { openSheet, closeSheet } from './nav.js';
 import { AboutYou, GoalFields, draftFromProfile, validate, heightCm } from './profile-form.js';
 import { fmtInt, fmtW, wUnit, num, todayKey, fromDisplayWeight } from '../util.js';
 
+// Ask the browser to look for a newer version right now (it otherwise checks on its own schedule).
+async function checkForUpdate() {
+  const reg = await navigator.serviceWorker?.getRegistration?.();
+  if (!reg) return toast('Updates apply automatically when Tally is opened from its web address');
+  try {
+    await reg.update();
+  } catch {
+    return toast('Couldn’t check right now. Are you online?');
+  }
+  if (reg.installing || reg.waiting) toast('New version found, installing…');
+  else toast(`You’re on the latest version (${self.TALLY_VERSION})`);
+}
+
 const REGIONS = [
   { value: 'united-states', label: 'United States' },
   { value: 'canada', label: 'Canada' },
@@ -158,6 +171,12 @@ export function Settings() {
       </div>
       ${S.memoryOnly && html`<${Note} tone="warn">This browser is blocking storage (private mode?), so nothing will be kept after you close it.<//>`}
       <button class="btn small danger-text" onClick=${doErase}>Erase all data</button>
+    </section>
+
+    <section class="card">
+      <header class="card-head"><h2>App</h2>
+        <button class="btn small" onClick=${checkForUpdate}>Check for updates</button></header>
+      <p class="small">Tally version <b>${self.TALLY_VERSION || '?'}</b></p>
     </section>
 
     <p class="muted small credits">Food data: USDA FoodData Central (public domain) and Open Food Facts (ODbL, openfoodfacts.org). Targets use the Mifflin-St Jeor equation and adapt to your logged intake and weight trend. Not medical advice.</p>
