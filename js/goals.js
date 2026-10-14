@@ -49,6 +49,18 @@ export function computeTargets(p, tdee, kg) {
   return { kcal, protein, carbs, fat, floored: raw < floor, maintenance: atGoal };
 }
 
+// Daily guides for the other nutrients, from the Dietary Guidelines for Americans / FDA Daily Values,
+// scaled to your calorie target where the guideline is calorie-based.
+export function nutrientGuides(kcal) {
+  return [
+    { key: 'fiber', label: 'Fiber', unit: 'g', kind: 'goal', target: Math.round((14 * kcal) / 1000), why: '14 g per 1,000 kcal. Helps you stay full on fewer calories.' },
+    { key: 'sugar', label: 'Total sugars', unit: 'g', kind: 'info', why: 'Includes natural sugar in fruit and milk; no daily limit.' },
+    { key: 'addedSugar', label: 'Added sugars', unit: 'g', kind: 'limit', target: Math.round((0.1 * kcal) / 4), why: 'Under 10% of calories.' },
+    { key: 'satFat', label: 'Saturated fat', unit: 'g', kind: 'limit', target: Math.round((0.1 * kcal) / 9), why: 'Under 10% of calories.' },
+    { key: 'sodium', label: 'Sodium', unit: 'mg', kind: 'limit', target: 2300, why: 'Under 2,300 mg. Salty days also show up as water weight on the scale.' },
+  ];
+}
+
 // ---------- weight trend ----------
 // Exponentially smoothed trend (α = 0.1, as in The Hacker's Diet / Happy Scale).
 // Missing days are linearly interpolated so gaps don't distort the line.

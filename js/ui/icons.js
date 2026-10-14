@@ -11,6 +11,8 @@ const P = {
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
   left: '<path d="m15 18-6-6 6-6"/>',
   right: '<path d="m9 18 6-6-6-6"/>',
+  down: '<path d="m6 9 6 6 6-6"/>',
+  up: '<path d="m6 15 6-6 6 6"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   flash: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
   keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7.5 14h9"/>',

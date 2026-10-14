@@ -1,6 +1,6 @@
-import { html, useMemo } from '../preact.js';
-import { S, emit, entriesFor, dayTotals, addEntries, toast, saveMeta } from '../store.js';
-import { latestTrendKg, checkInDue, lifts } from '../goals.js';
+import { html, useMemo, useState } from '../preact.js';
+import { S, emit, entriesFor, dayTotals, addEntries, toast, saveMeta, saveProfile } from '../store.js';
+import { latestTrendKg, checkInDue, lifts, nutrientGuides, computeTargets } from '../goals.js';
 import { proteinFriendlyFoods } from '../insights.js';
 import { nutrientsFor, defaultAmount, findUnit, hasUsdaKey } from '../sources.js';
 import { Ring, MacroBar } from './common.js';
@@ -80,6 +80,63 @@ function ProteinNudge({ remP, date }) {
   </section>`;
 }
 
+// Fiber, sugars, saturated fat and sodium, folded away until you want them.
+const OPEN_KEY = 'tally.nutrientsOpen';
+function readOpen() {
+  try { return localStorage.getItem(OPEN_KEY) === '1'; } catch { return false; }
+}
+function NutrientPanel({ tot, kcal }) {
+  const [open, setOpen] = useState(readOpen);
+  const toggle = () => {
+    setOpen(!open);
+    try { localStorage.setItem(OPEN_KEY, open ? '0' : '1'); } catch {}
+  };
+  const guides = nutrientGuides(kcal);
+  const fmt = (v, unit) => (unit === 'mg' ? fmtInt(v) : fmtG(v));
+  return html`<div class="nutrients">
+    ${open && html`<div class="nutrient-list">
+      ${guides.map(g => {
+        const v = tot[g.key] || 0;
+        const frac = g.target ? Math.min(1, v / g.target) : 0;
+        const over = g.kind === 'limit' && v > g.target;
+        const status = g.kind === 'goal' ? (v >= g.target ? 'goal met' : `${fmt(g.target - v, g.unit)} ${g.unit} to go`)
+          : g.kind === 'limit' ? (over ? `${fmt(v - g.target, g.unit)} ${g.unit} over` : 'under limit') : '';
+        return html`<div class=${`nutrient ${g.kind}${over ? ' over' : ''}`} title=${g.why}>
+          <div class="macro-top">
+            <span class="macro-label">${g.label}</span>
+            <span class="macro-num"><b>${fmt(v, g.unit)}</b>${g.target ? ` / ${fmt(g.target, g.unit)}` : ''} ${g.unit}</span>
+          </div>
+          ${g.target ? html`<div class="bar"><div class="bar-fill" style=${{ width: frac * 100 + '%' }}></div></div>` : null}
+          <span class="nutrient-note">${status ? html`<b>${status}</b> · ` : ''}${g.why}</span>
+        </div>`;
+      })}
+      <p class="nutrient-foot">Quick adds and some database items don’t list these, so totals can read a little low.</p>
+    </div>`}
+    <button class="nutrients-toggle" onClick=${toggle} aria-expanded=${open}>
+      ${open ? 'Hide' : 'Fiber, sugars, sodium & more'} <${Icon} n=${open ? 'up' : 'down'} size=${16} />
+    </button>
+  </div>`;
+}
+
+// Profiles created before the lifting question existed get asked once.
+function LiftCard() {
+  const p = S.profile;
+  if (p.lifts !== undefined) return null;
+  async function answer(yes) {
+    const next = { ...p, lifts: yes };
+    if (!p.manualTargets) next.targets = computeTargets(next, p.tdee, latestTrendKg());
+    await saveProfile(next);
+    toast(yes ? `Protein stays at ${next.targets.protein} g, set higher for lifting` : `Protein set to ${next.targets.protein} g`);
+  }
+  return html`<section class="card setup-card">
+    <div><b>Quick question: do you lift weights or strength train?</b>
+      <p class="small muted">It decides your protein target. Lifters get more (about 0.9 g per lb of goal weight) to keep muscle while losing fat.</p>
+      <div class="row-btns"><button class="btn small primary" onClick=${() => answer(true)}>Yes, I lift</button>
+        <button class="btn small" onClick=${() => answer(false)}>No</button></div>
+    </div>
+  </section>`;
+}
+
 export function Today() {
   const date = S.ui.date;
   const t = S.profile.targets;
@@ -109,12 +166,14 @@ export function Today() {
       <button class="summary-side" onClick=${() => openSheet('targets-info')} aria-label="How your targets are set">
         <span class="eaten"><span><b>${fmtInt(tot.kcal)}</b> eaten</span><span class="muted">of ${fmtInt(t.kcal)} <${Icon} n="info" size=${14} className="inline-icon" /></span></span>
         <${MacroBar} label="Protein" value=${tot.p} target=${t.protein} cls="protein"
-          note=${lifts(S.profile) && !S.profile.manualTargets ? 'set higher because you lift' : null} />
+          note=${S.profile.lifts === true && !S.profile.manualTargets ? 'set higher because you lift' : null} />
         <${MacroBar} label="Carbs" value=${tot.c} target=${t.carbs} cls="carbs" />
         <${MacroBar} label="Fat" value=${tot.f} target=${t.fat} cls="fat" />
       </button>
+      <${NutrientPanel} tot=${tot} kcal=${t.kcal} />
     </section>
 
+    <${LiftCard} />
     ${isToday && html`<${KeyCard} />`}
 
     <div class="pills">

@@ -54,6 +54,7 @@ export function validate(d, { needWeight, step } = {}) {
     if (!d.sex) return 'Choose male or female for the calorie formula';
     if (!(age >= 14 && age <= 100)) return 'Enter your age';
     if (!(cm >= 120 && cm <= 230)) return 'Enter your height';
+    if (d.lifts == null) return 'Let us know whether you lift weights';
     if (needWeight && !(w > 0)) return 'Enter your current weight';
   }
   if (step !== 1) {
@@ -63,7 +64,6 @@ export function validate(d, { needWeight, step } = {}) {
     if (needWeight && fromDisplayWeight(g, d.units) > fromDisplayWeight(w, d.units) + 0.1)
       return 'Tally is built for losing fat — set a goal at or below your current weight';
     if (!d.activity) return 'Pick an activity level';
-    if (d.lifts == null) return 'Let us know whether you lift weights';
   }
   return null;
 }
@@ -79,6 +79,7 @@ export function AboutYou({ d, set, needWeight }) {
       <${Seg} label="Sex" value=${d.sex} onChange=${v => set({ ...d, sex: v })}
         options=${[{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }]} />
     <//>
+    <${LiftField} d=${d} set=${set} />
     <div class="grid2">
       <${NumField} label="Age" value=${d.age} onInput=${v => set({ ...d, age: v })} suffix="yrs" />
       ${d.units === 'imperial'
@@ -113,10 +114,14 @@ export function GoalFields({ d, set, currentKg }) {
         </button>`)}
       </div>
     <//>
-    <${Field} label="Do you lift weights or strength train?"
-      hint=${`If yes, your protein target is set higher (${d.units === 'imperial' ? 'about 0.9 g per lb of goal weight instead of 0.7' : '2.0 g per kg of goal weight instead of 1.6'}) so you keep muscle while losing fat.`}>
-      <${Seg} label="Lift weights" value=${d.lifts == null ? '' : d.lifts ? 'yes' : 'no'} onChange=${v => set({ ...d, lifts: v === 'yes' })}
-        options=${[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} />
-    <//>
   `;
+}
+
+// Lifting decides the protein target, so it's asked up front.
+export function LiftField({ d, set }) {
+  return html`<${Field} label="Do you lift weights or strength train?"
+    hint=${`Yes sets your protein target higher (${d.units === 'imperial' ? 'about 0.9 g per lb of goal weight instead of 0.7' : '2.0 g per kg of goal weight instead of 1.6'}) so you keep muscle while losing fat.`}>
+    <${Seg} label="Lift weights" value=${d.lifts == null ? '' : d.lifts ? 'yes' : 'no'} onChange=${v => set({ ...d, lifts: v === 'yes' })}
+      options=${[{ value: 'yes', label: 'Yes, I lift' }, { value: 'no', label: 'No' }]} />
+  <//>`;
 }

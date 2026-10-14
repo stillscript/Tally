@@ -173,13 +173,11 @@ export function Settings() {
       <button class="btn small danger-text" onClick=${doErase}>Erase all data</button>
     </section>
 
-    <section class="card">
-      <header class="card-head"><h2>App</h2>
-        <button class="btn small" onClick=${checkForUpdate}>Check for updates</button></header>
-      <p class="small">Tally version <b>${self.TALLY_VERSION || '?'}</b></p>
-    </section>
-
     <p class="muted small credits">Food data: USDA FoodData Central (public domain) and Open Food Facts (ODbL, openfoodfacts.org). Targets use the Mifflin-St Jeor equation and adapt to your logged intake and weight trend. Not medical advice.</p>
+    <footer class="app-version">
+      <span>Tally version <b>${self.TALLY_VERSION || '?'}</b></span>
+      <button class="link" onClick=${checkForUpdate}>Check for updates</button>
+    </footer>
   </div>`;
 }
 

@@ -233,6 +233,19 @@ select.input {
 .summary-side:active { background: var(--surface-2); }
 .summary-side .macro { display: block; }
 .inline-icon { display: inline-block; vertical-align: -2px; margin-left: 2px; opacity: .7; }
+.nutrients { grid-column: 1 / -1; margin: -4px -4px -6px; }
+.nutrients-toggle { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 36px;
+  border-top: 1px solid var(--line); padding-top: 6px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.nutrient-list { display: grid; gap: 12px; padding: 8px 4px 12px; border-top: 1px solid var(--line); }
+.nutrient .bar-fill { background: var(--good); }
+.nutrient.limit .bar-fill { background: var(--text-3); }
+.nutrient.limit.over .bar-fill { background: var(--warn); }
+.nutrient.over .macro-num b { color: var(--warn); }
+.nutrient-note { display: block; font-size: 12px; color: var(--text-3); margin-top: 3px; line-height: 1.35; }
+.nutrient-note b { color: var(--text-2); font-weight: 600; }
+.nutrient.over .nutrient-note b { color: var(--warn); }
+.nutrient-foot { font-size: 12px; color: var(--text-3); margin: 0; }
+.app-version { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 4px 0 24px; font-size: 13px; color: var(--text-2); }
 .macro-note { display: block; font-size: 11px; color: var(--protein); margin-top: 3px; font-weight: 600; }
 .eaten { display: flex; justify-content: space-between; gap: 6px; font-size: 14px; white-space: nowrap; }
 .macro-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; gap: 6px; }

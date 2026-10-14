@@ -60,7 +60,7 @@ export function Onboarding() {
     return html`<div class="onboard">
       ${dots}
       <h1>About you</h1>
-      <p class="muted">Used to estimate how many calories you burn.</p>
+      <p class="muted">Used to set your calorie and protein targets.</p>
       <${AboutYou} d=${d} set=${setD} needWeight />
       <div class="onboard-nav"><button class="btn" onClick=${() => setStep(0)}>Back</button>
         <button class="btn primary grow" onClick=${next}>Next</button></div>
