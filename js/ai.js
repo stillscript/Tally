@@ -128,6 +128,30 @@ export async function estimatePhoto({ base64, mediaType = 'image/jpeg', notes })
   });
 }
 
+// ---------- spoken / typed description ----------
+const TEXT_SYSTEM = `You estimate the nutrition of foods someone describes in words for a calorie-tracking app used by someone losing fat while strength training.
+
+List each food as its own item with a realistic portion in grams as eaten (use the amount they say; otherwise a typical single serving), and give calories, protein, carbs and fat for that amount using standard USDA-style values. Include obvious add-ons they mention (butter, oil, sauces). Keep names short. "dish" is a short name for the whole description.`;
+
+export async function estimateText(text) {
+  return withClient(async c => {
+    const res = await c.beta.messages.create({
+      model: model(),
+      max_tokens: 16000,
+      ...FALLBACK,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: PHOTO_SCHEMA } },
+      system: TEXT_SYSTEM,
+      messages: [{ role: 'user', content: text.trim() }],
+    });
+    checkStop(res);
+    try {
+      return JSON.parse(textOf(res));
+    } catch {
+      throw fail('Claude’s answer couldn’t be read. Please try again.');
+    }
+  });
+}
+
 // ---------- restaurant order ----------
 const RECORD_TOOL = {
   name: 'record_nutrition',

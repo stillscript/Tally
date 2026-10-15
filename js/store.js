@@ -179,18 +179,20 @@ export async function upsertFood(food) {
   return f;
 }
 
+// Optional listeners (celebrations) told about every new log, with the day's totals beforehand.
+export const hooks = { onLogged: null };
+
 export async function addEntry(e) {
-  const entry = { ...e, id: uid(), createdAt: Date.now() };
-  S.entries = [...S.entries, entry];
-  emit();
-  await save('entries', entry);
-  return entry;
+  return (await addEntries([e]))[0];
 }
 export async function addEntries(list) {
   const now = Date.now();
+  const date = list[0]?.date;
+  const before = date ? dayTotals(date) : null;
   const made = list.map((e, i) => ({ ...e, id: uid(), createdAt: now + i }));
   S.entries = [...S.entries, ...made];
   emit();
+  try { hooks.onLogged?.(made, { date, before }); } catch (err) { console.warn(err); }
   for (const e of made) await save('entries', e);
   return made;
 }

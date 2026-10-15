@@ -113,6 +113,8 @@ export function AddSheet({ meal: m0, date: d0 }) {
       <${Icon} n="search" size=${20} />
       <input type="search" placeholder="Search foods, brands, saved meals" value=${q} enterkeyhint="search"
         onInput=${e => setQ(e.currentTarget.value)} aria-label="Search foods" />
+      <button type="button" class="icon-btn mic-inline" onClick=${() => openSheet('voice', { meal, date })} aria-label="Say what you ate">
+        <${Icon} n="mic" size=${20} /></button>
     </form>
 
     <div class="quick-actions">

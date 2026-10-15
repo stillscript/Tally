@@ -11,6 +11,8 @@ import { ProfileSheet, TargetsSheet } from './settings.js';
 import { TargetsInfoSheet } from './explain.js';
 import { SaveMealSheet, MealTemplateSheet } from './meals.js';
 import { AiSetupSheet, PhotoSheet, RestaurantSheet, CoachSheet } from './ai.js';
+import { VoiceSheet } from './voice.js';
+import { WhatsNewSheet } from './whatsnew.js';
 
 const SHEETS = {
   food: FoodSheet,
@@ -29,6 +31,8 @@ const SHEETS = {
   photo: PhotoSheet,
   restaurant: RestaurantSheet,
   coach: CoachSheet,
+  voice: VoiceSheet,
+  'whats-new': WhatsNewSheet,
 };
 
 export function SheetHost() {

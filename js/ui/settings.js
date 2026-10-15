@@ -3,6 +3,7 @@ import { S, saveProfile, saveSettings, saveMeta, exportData, importData, eraseAl
 import { computeTargets, latestTrendKg, formulaTdee, paceOf, ACTIVITY, lifts } from '../goals.js';
 import { AI_MODELS, hasAiKey } from '../ai.js';
 import { copySummary } from './ai.js';
+import { previewCelebration } from './celebrate.js';
 import { verifyUsdaKey, hasUsdaKey } from '../sources.js';
 import { Sheet, Seg, Field, NumField, Note } from './common.js';
 import { Icon } from './icons.js';
@@ -136,6 +137,13 @@ export function Settings() {
       <//>
       ${Object.keys(S.meta.muted || {}).length > 0 && html`<button class="btn small ghost" onClick=${() => { saveMeta({ muted: {} }); toast('Notes re-enabled for all foods'); }}>
         Un-hide ${Object.keys(S.meta.muted).length} muted food${Object.keys(S.meta.muted).length > 1 ? 's' : ''}</button>`}
+      <${Field} label="Celebrations" hint="Confetti when you hit your protein or fiber goal, a sparkle for protein-packed foods. Holidays get their own look.">
+        <div class="row-btns tight">
+          <${Seg} label="Celebrations" value=${S.settings.celebrate === false ? 'off' : 'on'} onChange=${v => saveSettings({ celebrate: v === 'on' })}
+            options=${[{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} />
+          <button class="btn small ghost" onClick=${previewCelebration}>Preview</button>
+        </div>
+      <//>
       <${Field} label="Where you shop" hint="Product search and lighter swaps only show products sold here.">
         <select class="input" value=${S.settings.region} onChange=${e => saveSettings({ region: e.currentTarget.value })}>
           ${REGIONS.map(r => html`<option value=${r.value}>${r.label}</option>`)}
@@ -176,6 +184,7 @@ export function Settings() {
     <p class="muted small credits">Food data: USDA FoodData Central (public domain) and Open Food Facts (ODbL, openfoodfacts.org). Targets use the Mifflin-St Jeor equation and adapt to your logged intake and weight trend. Not medical advice.</p>
     <footer class="app-version">
       <span>Tally version <b>${self.TALLY_VERSION || '?'}</b></span>
+      <button class="link" onClick=${() => openSheet('whats-new')}>What’s new</button>
       <button class="link" onClick=${checkForUpdate}>Check for updates</button>
     </footer>
   </div>`;

@@ -12,6 +12,7 @@ const P = {
   left: '<path d="m15 18-6-6 6-6"/>',
   right: '<path d="m9 18 6-6-6-6"/>',
   down: '<path d="m6 9 6 6 6-6"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
   up: '<path d="m6 15 6-6 6 6"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   flash: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',

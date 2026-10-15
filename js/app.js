@@ -1,6 +1,7 @@
 import '../version.js';
 import { html, render, useEffect } from './preact.js';
-import { S, useStore, init, emit, toast } from './store.js';
+import { S, useStore, init, emit, toast, saveMeta } from './store.js';
+import { installCelebrations } from './ui/celebrate.js';
 import { preloadScanner } from './scanner.js';
 import { Today } from './ui/today.js';
 import { Progress } from './ui/progress.js';
@@ -55,6 +56,15 @@ function App() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
+  // After an update installs, say so once and link to the version log.
+  useEffect(() => {
+    if (!S.ready || !S.profile) return;
+    const now = self.TALLY_VERSION;
+    const seen = S.meta.seenVersion;
+    if (seen === now) return;
+    saveMeta({ seenVersion: now });
+    if (seen || S.entries.length) toast(`Updated to version ${now}`, { label: 'What’s new', fn: () => openSheet('whats-new') });
+  }, [S.ready, !!S.profile]);
   useEffect(() => {
     if (S.profile) setTimeout(preloadScanner, 1500);
   }, [!!S.profile]);
@@ -75,6 +85,7 @@ function App() {
   `;
 }
 
+installCelebrations();
 init();
 render(html`<${App} />`, document.getElementById('app'));
 
