@@ -2,6 +2,13 @@
 // and bump the number in version.js to match.
 export const CHANGELOG = [
   {
+    version: '2.5', date: '2026-10-15',
+    items: [
+      'Weigh-ins are optional: they no longer count toward the consistency score, which is now logging (40), protein (35) and calories on target (25).',
+      'Each day in the Your week strip shows its calorie total at a glance.',
+    ],
+  },
+  {
     version: '2.4', date: '2026-10-15',
     items: [
       'Your week, at the top of Progress: a consistency score (0–100) built from logging, protein, calories on target and weigh-ins, compared with the 7 days before.',

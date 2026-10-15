@@ -2,6 +2,11 @@
 
 Newest first. The same log is in the app under Settings → What’s new.
 
+## 2.5 — 2026-10-15
+
+- Weigh-ins are optional: they no longer count toward the consistency score, which is now logging (40), protein (35) and calories on target (25).
+- Each day in the Your week strip shows its calorie total at a glance.
+
 ## 2.4 — 2026-10-15
 
 - Your week, at the top of Progress: a consistency score (0–100) built from logging, protein, calories on target and weigh-ins, compared with the 7 days before.

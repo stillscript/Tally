@@ -1,7 +1,8 @@
 // "Your week": a consistency score and day-by-day summary over 7 complete days.
 //
-// The score (0–100) rewards the four habits that actually drive results:
-//   logging 40 · protein 30 · calories on target 20 · weigh-ins 10
+// The score (0–100) rewards the three habits that drive results:
+//   logging 40 · protein 35 · calories on target 25
+// Weigh-ins are optional and never affect the score.
 // Windows end yesterday, so a half-eaten today never drags the score down, and
 // days before you started using Tally don't count against you.
 import { S, entriesFor, sumN } from './store.js';
@@ -11,17 +12,14 @@ import { todayKey, addDays, mean } from './util.js';
 export const MIN_DAYS = 3;
 export const PROTEIN_HIT = 0.9; // 90% of target counts as a hit
 export const CAL_BAND = 0.1; // within ±10% of the calorie target
-export const WEIGH_INS_PER_WEEK = 5;
 
 export const SCORE_PARTS = [
   { key: 'logged', label: 'Logging', short: 'Logged', pts: 40,
     what: 'Days with your meals logged.', why: 'Complete logs are what the weekly check-in learns your real burn from.' },
-  { key: 'protein', label: 'Protein', short: 'Protein', pts: 30,
+  { key: 'protein', label: 'Protein', short: 'Protein', pts: 35,
     what: `Days at ${Math.round(PROTEIN_HIT * 100)}% or more of your protein target.`, why: 'Protects muscle while you lose fat.' },
-  { key: 'calories', label: 'Calories', short: 'On target', pts: 20,
+  { key: 'calories', label: 'Calories', short: 'Calories', pts: 25,
     what: `Days within ${Math.round(CAL_BAND * 100)}% of your calorie target.`, why: 'Steady days make progress, and your check-ins, predictable.' },
-  { key: 'weighins', label: 'Weigh-ins', short: 'Weigh-ins', pts: 10,
-    what: `Full points at ${WEIGH_INS_PER_WEEK} weigh-ins in 7 days.`, why: 'Feeds the trend line that shows real fat loss through water swings.' },
 ];
 
 export function scoreBand(score) {
@@ -52,7 +50,6 @@ export function weekSummary(offset = 0) {
   const p = S.profile;
   const t = p.targets;
   const { start, end } = weekWindow(offset);
-  const weighed = new Set(S.weights.map(w => w.date));
   const days = [];
   for (let d = start; d <= end; d = addDays(d, 1)) {
     const tot = sumN(entriesFor(d));
@@ -63,7 +60,6 @@ export function weekSummary(offset = 0) {
       date: d, eligible, logged, kcal: tot.kcal, p: tot.p, ratio,
       proteinHit: logged && tot.p >= t.protein * PROTEIN_HIT,
       cal: !logged ? null : ratio > 1 + CAL_BAND ? 'over' : ratio < 1 - CAL_BAND ? 'under' : 'on',
-      weighed: weighed.has(d),
     });
   }
 
@@ -73,17 +69,14 @@ export function weekSummary(offset = 0) {
     logged: el.filter(d => d.logged).length,
     protein: el.filter(d => d.proteinHit).length,
     calories: el.filter(d => d.cal === 'on').length,
-    weighins: el.filter(d => d.weighed).length,
     over: el.filter(d => d.cal === 'over').length,
     under: el.filter(d => d.cal === 'under').length,
   };
-  const weighNeed = Math.max(1, Math.ceil((n * WEIGH_INS_PER_WEEK) / 7));
   const frac = n ? {
     logged: count.logged / n,
     protein: count.protein / n,
     calories: count.calories / n,
-    weighins: Math.min(1, count.weighins / weighNeed),
-  } : { logged: 0, protein: 0, calories: 0, weighins: 0 };
+  } : { logged: 0, protein: 0, calories: 0 };
   const score = n >= MIN_DAYS ? Math.round(SCORE_PARTS.reduce((s, part) => s + part.pts * frac[part.key], 0)) : null;
 
   const loggedDays = el.filter(d => d.logged);
@@ -94,7 +87,7 @@ export function weekSummary(offset = 0) {
   const b = trendOn(series, end);
   const trendChange = a && b && a.date < b.date && b.date >= start ? b.trend - a.trend : null;
 
-  return { offset, start, end, days, n, count, frac, weighNeed, score, avg, trendChange };
+  return { offset, start, end, days, n, count, frac, score, avg, trendChange };
 }
 
 // The habit costing the most points: where the next week's easiest gains are.

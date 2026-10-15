@@ -100,7 +100,7 @@ export function Onboarding() {
       <li>${profile.lifts
         ? html`<b>Protein is set high because you lift</b> (about ${round(targets.protein / toDisplayWeight(profile.goalWeightKg, d.units), 1)} g per ${u} of goal weight) to protect muscle while you lose fat. It’s the number to prioritize.`
         : html`<b>Protein</b> is about ${round(targets.protein / toDisplayWeight(profile.goalWeightKg, d.units), 1)} g per ${u} of goal weight, enough to protect muscle while you lose fat. If you start lifting, turn that on in Settings and it goes up.`}</li>
-      <li><b>It adapts.</b> Weigh in most mornings and log honestly; every week Tally compares the two and fine-tunes your calories.</li>
+      <li><b>It adapts.</b> Log honestly, and weigh in whenever you like (even once or twice a week helps). Tally compares the two and fine-tunes your calories.</li>
       ${eta && html`<li>At this pace you’d reach ${round(toDisplayWeight(profile.goalWeightKg, d.units), 1)} ${u} around <b>${parseKey(eta).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</b>.</li>`}
     </ul>
     ${targets.floored && html`<p class="note warn">Calories are held at a safe minimum, so progress will be a bit slower than the ${paceOf(profile).label.toLowerCase()} pace.</p>`}

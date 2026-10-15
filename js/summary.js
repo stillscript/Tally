@@ -27,7 +27,7 @@ export function dataSummary({ days = 28, detailDays = 7 } = {}) {
   if (series.length && wk != null) out.push(`- Trend weight change, last 7 days: ${round(toDisplayWeight(latestTrendKg() - wk, units), 1)} ${u}`);
   const week = weekSummary(0);
   if (week.score != null) {
-    out.push(`- Consistency score, last 7 full days: ${week.score}/100 (logged ${week.count.logged}/${week.n} days, protein hit ${week.count.protein}/${week.n}, calories within 10% ${week.count.calories}/${week.n}, weigh-ins ${week.count.weighins})`);
+    out.push(`- Consistency score, last 7 full days: ${week.score}/100 (logged ${week.count.logged}/${week.n} days, protein hit ${week.count.protein}/${week.n}, calories within 10% ${week.count.calories}/${week.n})`);
   }
   out.push('');
 
