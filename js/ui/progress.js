@@ -1,13 +1,13 @@
 import { html, useState, useMemo } from '../preact.js';
-import { S, entriesFor, sumN } from '../store.js';
+import { S } from '../store.js';
 import { weightSeries, latestTrendKg, projection, checkInDue, daysToCheckIn, paceOf } from '../goals.js';
-import { weeklyPatterns } from '../insights.js';
-import { WeightChart, CalorieBars } from './charts.js';
-import { Seg, Note } from './common.js';
+import { WeightChart } from './charts.js';
+import { WeekCard } from './week.js';
+import { Seg } from './common.js';
 import { Icon } from './icons.js';
 import { openSheet } from './nav.js';
 import { openAi, copySummary } from './ai.js';
-import { todayKey, addDays, fmtInt, fmtW, wUnit, round, toDisplayWeight, parseKey, mean, prettyDate } from '../util.js';
+import { todayKey, addDays, fmtInt, fmtW, wUnit, round, toDisplayWeight, parseKey, prettyDate } from '../util.js';
 
 export function Progress() {
   const [range, setRange] = useState('30');
@@ -23,18 +23,10 @@ export function Progress() {
   const change7 = weekAgo ? trendNow - weekAgo.trend : null;
   const proj = projection();
 
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = addDays(today, -i);
-    days.push({ date: d, kcal: sumN(entriesFor(d)).kcal, today: d === today });
-  }
-  const logged = days.filter(d => d.kcal >= 400 && !d.today);
-  const avg = logged.length ? mean(logged.map(d => d.kcal)) : null;
-  const onTarget = logged.filter(d => Math.abs(d.kcal - p.targets.kcal) <= p.targets.kcal * 0.1).length;
-  const patterns = useMemo(() => weeklyPatterns(), [S.entries.length, p.targets.kcal]);
-
   return html`<div class="progress">
     <h1 class="screen-title">Progress</h1>
+
+    <${WeekCard} />
 
     <section class="card">
       <header class="card-head">
@@ -56,19 +48,6 @@ export function Progress() {
           : html`${fmtW(proj.toGo, units)} ${u} to go. ${proj.basis === 'trend' ? 'At your current pace' : `At your planned pace (${round(toDisplayWeight(proj.perWeekKg, units), 1)} ${u}/week)`}, you’ll get there around <b>${parseKey(proj.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: proj.days > 300 ? 'numeric' : undefined })}</b>.`}
       </p>
       <button class="btn block" onClick=${() => openSheet('weight', {})}><${Icon} n="scale" /> Log weight</button>
-    </section>
-
-    <section class="card">
-      <header class="card-head"><h2>Calories</h2><span class="muted small">last 7 days</span></header>
-      <${CalorieBars} days=${days} target=${p.targets.kcal} />
-      <p class="muted small">${avg != null
-        ? html`Average <b>${fmtInt(avg)}</b> kcal on ${logged.length} logged day${logged.length > 1 ? 's' : ''} · ${onTarget} within 10% of target`
-        : 'Log a full day to start seeing averages.'}</p>
-    </section>
-
-    <section class="card">
-      <header class="card-head"><h2>This week</h2></header>
-      <div class="stack">${patterns.map(x => html`<${Note} tone=${x.tone}>${x.text}<//>`)}</div>
     </section>
 
     <section class="card">

@@ -2,6 +2,7 @@
 // in-app questions. Plain text and short so it stays cheap and easy to read.
 import { S, entriesFor, sumN } from './store.js';
 import { weightSeries, latestTrendKg, paceOf, lifts, ACTIVITY } from './goals.js';
+import { weekSummary } from './week.js';
 import { todayKey, addDays, parseKey, fmtInt, fmtG, toDisplayWeight, wUnit, round, MEALS } from './util.js';
 
 export function dataSummary({ days = 28, detailDays = 7 } = {}) {
@@ -24,6 +25,10 @@ export function dataSummary({ days = 28, detailDays = 7 } = {}) {
   out.push(`- Estimated burn: ${fmtInt(p.tdee)} kcal/day (${p.tdeeSource === 'adaptive' ? 'calibrated from my logging and weight trend' : 'formula estimate'})`);
   const wk = trendOn(addDays(today, -7));
   if (series.length && wk != null) out.push(`- Trend weight change, last 7 days: ${round(toDisplayWeight(latestTrendKg() - wk, units), 1)} ${u}`);
+  const week = weekSummary(0);
+  if (week.score != null) {
+    out.push(`- Consistency score, last 7 full days: ${week.score}/100 (logged ${week.count.logged}/${week.n} days, protein hit ${week.count.protein}/${week.n}, calories within 10% ${week.count.calories}/${week.n}, weigh-ins ${week.count.weighins})`);
+  }
   out.push('');
 
   out.push(`## Daily totals, last ${days} days`);

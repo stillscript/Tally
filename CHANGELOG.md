@@ -2,6 +2,13 @@
 
 Newest first. The same log is in the app under Settings → What’s new.
 
+## 2.4 — 2026-10-15
+
+- Your week, at the top of Progress: a consistency score (0–100) built from logging, protein, calories on target and weigh-ins, compared with the 7 days before.
+- A 7-day strip showing each day’s calories against target, protein hits and weigh-ins at a glance. Tap a day to open it.
+- Weekly averages, trend weight and patterns now live in the same card, which replaces the old Calories and This week cards. Use the arrows to look back at earlier weeks.
+- The score explains itself: tap it to see how each habit earned its points, plus the easiest gain for next week.
+
 ## 2.3 — 2026-10-14
 
 - Voice logging: tap the mic in Search and say what you ate, e.g. “two eggs and a black coffee”.

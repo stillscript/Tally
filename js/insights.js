@@ -5,7 +5,8 @@
 //  • swaps are real products from the same category, rotated so you don't see the same three
 import { S, saveMeta, entriesFor, sumN, logCounts } from './store.js';
 import { fetchCategoryProducts } from './sources.js';
-import { todayKey, addDays, daysBetween, parseKey, fmtG, fmtInt, pct, ordinal, hash, mean, round, KCAL_PER_KG, toDisplayWeight, wUnit } from './util.js';
+import { isLoggedDay } from './goals.js';
+import { todayKey, addDays, daysBetween, parseKey, fmtG, fmtInt, pct, ordinal, hash, mean } from './util.js';
 
 const DV = { satFat: 20, sodium: 2300, addedSugar: 50, fiber: 28 };
 
@@ -234,41 +235,19 @@ export function proteinFriendlyFoods(limit = 3) {
     .slice(0, limit);
 }
 
-// ---------- weekly patterns (Progress tab) ----------
-export function weeklyPatterns() {
+// ---------- weekly patterns (Your week card) ----------
+// Observations about one 7-day window. Averages and protein days live in the card itself,
+// so these stick to what the numbers alone don't show.
+export function weeklyPatterns(start, end) {
   const t = S.profile.targets;
-  const units = S.settings.units;
-  const end = addDays(todayKey(), -1);
   const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(end, -i);
+  for (let d = start; d <= end; d = addDays(d, 1)) {
+    if (d < S.profile.startDate || !isLoggedDay(d, t.kcal)) continue;
     const list = entriesFor(d);
-    const tot = sumN(list);
-    if (tot.kcal >= 400) days.push({ d, list, tot });
+    days.push({ d, list, tot: sumN(list) });
   }
-  if (days.length < 3) {
-    return [{ tone: 'info', text: `Patterns show up after 3 fully logged days in the past week (you have ${days.length}).` }];
-  }
+  if (days.length < 3) return [];
   const out = [];
-  const avg = mean(days.map(o => o.tot.kcal));
-  const diff = avg - t.kcal;
-  if (Math.abs(diff) <= t.kcal * 0.05) {
-    out.push({ tone: 'good', text: `Right on target — you averaged ${fmtInt(avg)} kcal across ${days.length} logged days.` });
-  } else if (diff > 0) {
-    const w = toDisplayWeight((diff * 7) / KCAL_PER_KG, units);
-    out.push({ tone: 'warn', text: `You averaged ${fmtInt(avg)} kcal, about ${fmtInt(diff)} over target a day. That's roughly ${round(w, 1)} ${wUnit(units)} a week of slower progress.` });
-  } else {
-    out.push({ tone: 'info', text: `You averaged ${fmtInt(avg)} kcal, ${fmtInt(-diff)} under target. If energy or training suffers, eating closer to target is fine.` });
-  }
-
-  const hit = days.filter(o => o.tot.p >= t.protein * 0.9).length;
-  const regulars = proteinFriendlyFoods(3).map(f => f.name);
-  out.push({
-    tone: hit >= days.length * 0.7 ? 'good' : 'info',
-    text: `Protein target reached on ${hit} of ${days.length} days.` +
-      (hit < days.length * 0.7 && regulars.length ? ` Your most protein-efficient regulars: ${regulars.join(', ')}.` : ''),
-  });
-
   const byName = new Map();
   let total = 0, fatKcal = 0, snackKcal = 0;
   for (const o of days) {
@@ -281,9 +260,8 @@ export function weeklyPatterns() {
   }
   const [topName, topKcal] = [...byName.entries()].sort((a, b) => b[1] - a[1])[0] || [];
   if (topName && topKcal / total >= 0.12) {
-    out.push({ tone: 'info', text: `${topName} was ${pct(topKcal / total)} of your calories this week (${fmtInt(topKcal)} kcal).` });
+    out.push({ tone: 'info', text: `${topName} was ${pct(topKcal / total)} of your calories (${fmtInt(topKcal)} kcal).` });
   }
-
   const weekend = days.filter(o => [0, 6].includes(parseKey(o.d).getDay()));
   const weekday = days.filter(o => ![0, 6].includes(parseKey(o.d).getDay()));
   if (weekend.length && weekday.length) {
@@ -293,7 +271,7 @@ export function weeklyPatterns() {
   if (total && fatKcal / total >= 0.4) {
     out.push({ tone: 'info', text: `${pct(fatKcal / total)} of your calories came from fat. Trimming fat is usually the easiest way to make room for more protein.` });
   } else if (total && snackKcal / total >= 0.3) {
-    out.push({ tone: 'info', text: `Snacks made up ${pct(snackKcal / total)} of your calories this week.` });
+    out.push({ tone: 'info', text: `Snacks made up ${pct(snackKcal / total)} of your calories.` });
   }
-  return out.slice(0, 4);
+  return out.slice(0, 3);
 }

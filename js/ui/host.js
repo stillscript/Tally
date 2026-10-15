@@ -13,6 +13,7 @@ import { SaveMealSheet, MealTemplateSheet } from './meals.js';
 import { AiSetupSheet, PhotoSheet, RestaurantSheet, CoachSheet } from './ai.js';
 import { VoiceSheet } from './voice.js';
 import { WhatsNewSheet } from './whatsnew.js';
+import { ScoreInfoSheet } from './week.js';
 
 const SHEETS = {
   food: FoodSheet,
@@ -33,6 +34,7 @@ const SHEETS = {
   coach: CoachSheet,
   voice: VoiceSheet,
   'whats-new': WhatsNewSheet,
+  'score-info': ScoreInfoSheet,
 };
 
 export function SheetHost() {
