@@ -10,6 +10,7 @@ import { Onboarding } from './ui/onboarding.js';
 import { SheetHost } from './ui/host.js';
 import { Icon } from './ui/icons.js';
 import { openSheet, setTab } from './ui/nav.js';
+import { InstallScreen, shouldShowInstall } from './ui/install.js';
 import { todayKey, mealForTime } from './util.js';
 
 function Toast() {
@@ -70,6 +71,8 @@ function App() {
   }, [!!S.profile]);
 
   if (!S.ready) return html`<div class="splash"><img src="icons/icon.svg" alt="" width="64" height="64" /></div>`;
+  // Opened in a browser tab: explain Home Screen install first (once; Settings can show it again).
+  if (shouldShowInstall()) return html`<main class="screen"><${InstallScreen} /></main>`;
   if (!S.profile) return html`<main class="screen"><${Onboarding} /></main><${Toast} />`;
 
   const tab = S.ui.tab;

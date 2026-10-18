@@ -4,6 +4,7 @@ import { computeTargets, latestTrendKg, formulaTdee, paceOf, ACTIVITY, lifts } f
 import { AI_MODELS, hasAiKey } from '../ai.js';
 import { copySummary } from './ai.js';
 import { previewCelebration } from './celebrate.js';
+import { isStandalone, showInstallAgain } from './install.js';
 import { verifyUsdaKey, hasUsdaKey } from '../sources.js';
 import { Sheet, Seg, Field, NumField, Note } from './common.js';
 import { Icon } from './icons.js';
@@ -186,6 +187,7 @@ export function Settings() {
       <span>Tally version <b>${self.TALLY_VERSION || '?'}</b></span>
       <button class="link" onClick=${() => openSheet('whats-new')}>What’s new</button>
       <button class="link" onClick=${checkForUpdate}>Check for updates</button>
+      ${!isStandalone() && html`<button class="link" onClick=${showInstallAgain}>Add to Home Screen</button>`}
     </footer>
   </div>`;
 }

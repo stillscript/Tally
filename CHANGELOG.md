@@ -2,6 +2,10 @@
 
 Newest first. The same log is in the app under Settings → What’s new.
 
+## 2.6 — 2026-10-16
+
+- Opening Tally in a browser now shows how to add it to your Home Screen (the recommended way to use it, and the way your data stays safe), with steps for iPhone and Android. Find it again under Settings → Add to Home Screen.
+
 ## 2.5 — 2026-10-15
 
 - Weigh-ins are optional: they no longer count toward the consistency score, which is now logging (40), protein (35) and calories on target (25).

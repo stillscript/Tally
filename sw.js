@@ -13,7 +13,7 @@ const SHELL = [
   './js/ui/weight.js', './js/ui/checkin.js', './js/ui/progress.js', './js/ui/charts.js', './js/ui/settings.js',
   './js/ui/onboarding.js', './js/ui/profile-form.js', './js/ui/explain.js', './js/ui/meals.js', './js/ui/ai.js',
   './js/ui/voice.js', './js/ui/whatsnew.js', './js/ui/celebrate.js', './js/parse.js', './js/changelog.js',
-  './js/week.js', './js/ui/week.js',
+  './js/week.js', './js/ui/week.js', './js/ui/install.js',
 ];
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net'];
 const CDN_PRELOAD = [

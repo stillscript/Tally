@@ -2,6 +2,12 @@
 // and bump the number in version.js to match.
 export const CHANGELOG = [
   {
+    version: '2.6', date: '2026-10-16',
+    items: [
+      'Opening Tally in a browser now shows how to add it to your Home Screen (the recommended way to use it, and the way your data stays safe), with steps for iPhone and Android. Find it again under Settings → Add to Home Screen.',
+    ],
+  },
+  {
     version: '2.5', date: '2026-10-15',
     items: [
       'Weigh-ins are optional: they no longer count toward the consistency score, which is now logging (40), protein (35) and calories on target (25).',
