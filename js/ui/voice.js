@@ -1,7 +1,7 @@
 import { html, useState, useEffect, useRef, useMemo } from '../preact.js';
 import { S, addEntries, upsertFood, deleteEntry, toast } from '../store.js';
 import { parseSpoken, entryFor } from '../parse.js';
-import { hasAiKey, estimateText } from '../ai.js';
+import { hasAiKey, aiName, estimateText } from '../ai.js';
 import { Sheet, MealPicker } from './common.js';
 import { Icon } from './icons.js';
 import { closeAllSheets } from './nav.js';
@@ -18,14 +18,14 @@ const MIC_ERRORS = {
   network: 'Voice input needs a connection. You can still type it.',
 };
 
-// Claude's per-item estimates become foods so they can be re-logged later.
+// The AI's per-item estimates become foods so they can be re-logged later.
 function aiItemToFood(i) {
   const g = i.grams > 0 ? i.grams : 100;
   const per = v => (v / g) * 100;
   return {
-    id: 'ai:' + uid(), barcode: null, name: i.name, brand: '', source: 'ai', base: 'g',
+    id: 'ai:' + uid(), barcode: null, name: i.name, brand: '', source: 'ai', aiBy: S.settings.aiProvider, aiKind: 'text', base: 'g',
     per100: { kcal: per(i.kcal), p: per(i.protein_g), c: per(i.carbs_g), f: per(i.fat_g), fiber: null, sugar: null, addedSugar: null, satFat: null, sodium: null },
-    servings: [{ label: `${i.portion} (${Math.round(g)} g)`, g }], categories: [], quality: [], last: { qty: 1, unit: 's0' },
+    servings: [{ label: `${i.portion || '1 serving'} (${Math.round(g)} g)`, g }], categories: [], quality: [], last: { qty: 1, unit: 's0' },
   };
 }
 
@@ -118,11 +118,11 @@ export function VoiceSheet({ meal: m0, date: d0 }) {
     ${(parsed.items.length > 0 || aiItems.length > 0) && html`<div class="ai-items">
       ${parsed.items.map(i => row(i, i.food ? `${i.approx ? '≈ ' : ''}${fmtG(i.qty)} × ${i.unit.label} · ${fmtG((i.food.per100.p * i.qty * i.unit.g) / 100)}g P`
         : `saved meal · ${i.meal.items.length} items${i.qty !== 1 ? ` · ${fmtG(i.qty)}×` : ''}`))}
-      ${aiItems.map(i => row(i, `Claude estimate · ${i.unit.label}`))}
+      ${aiItems.map(i => row(i, `${aiName()} estimate · ${i.unit.label}`))}
     </div>`}
     ${unresolved.length > 0 && html`<div class="voice-miss">
       <span class="small">Couldn’t place: ${unresolved.map(u => html`<b>“${u}”</b> `)}</span>
-      ${hasAiKey() ? html`<button class="btn small" onClick=${estimateRest} disabled=${aiBusy}>${aiBusy ? 'Estimating…' : html`<${Icon} n="spark" size=${16} /> Estimate with Claude`}</button>`
+      ${hasAiKey() ? html`<button class="btn small" onClick=${estimateRest} disabled=${aiBusy}>${aiBusy ? 'Estimating…' : html`<${Icon} n="spark" size=${16} /> Estimate with ${aiName()}`}</button>`
         : html`<span class="muted small">Try a simpler name, or add it from Search.</span>`}
     </div>`}
     ${text.trim() && html`<div class="meal-pick"><span class="field-label">Meal</span><${MealPicker} value=${meal} onChange=${setMeal} /></div>`}

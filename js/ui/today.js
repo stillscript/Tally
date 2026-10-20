@@ -1,12 +1,14 @@
 import { html, useMemo, useState } from '../preact.js';
-import { S, emit, entriesFor, dayTotals, addEntries, toast, saveMeta, saveProfile } from '../store.js';
+import { S, emit, entriesFor, dayTotals, addEntries, deleteEntry, upsertFood, toast, saveMeta, saveProfile } from '../store.js';
 import { latestTrendKg, checkInDue, lifts, nutrientGuides, computeTargets } from '../goals.js';
-import { proteinFriendlyFoods } from '../insights.js';
-import { nutrientsFor, defaultAmount, findUnit, hasUsdaKey } from '../sources.js';
+import { fillTheGap } from '../fillgap.js';
+import { amountText, hasUsdaKey } from '../sources.js';
 import { Ring, MacroBar } from './common.js';
 import { Icon } from './icons.js';
 import { openSheet, goTo } from './nav.js';
-import { MEALS, todayKey, addDays, prettyDate, fmtInt, fmtG, fmtW, wUnit, mealForTime } from '../util.js';
+import { isAiMeal } from './ai.js';
+import { BackupCard } from './backup.js';
+import { MEALS, todayKey, addDays, prettyDate, fmtInt, fmtG, fmtW, wUnit, mealForTime, mealLabel } from '../util.js';
 
 function go(delta) {
   S.ui.date = addDays(S.ui.date, delta);
@@ -14,7 +16,7 @@ function go(delta) {
 }
 
 function Entry({ e }) {
-  const open = () => (e.foodId ? openSheet('food', { entry: e }) : openSheet('quick', { entry: e }));
+  const open = () => openSheet(isAiMeal(e) ? 'ai-entry' : e.foodId ? 'food' : 'quick', { entry: e });
   return html`<button class="entry" onClick=${open}>
     <span class="e-main">
       <span class="e-name">${e.name}</span>
@@ -55,28 +57,36 @@ function KeyCard() {
   return html`<section class="card setup-card">
     <div><b>Finish setup: free USDA key</b>
       <p class="small muted">Barcode lookups share a demo key that runs out after about 10 scans an hour. Your own key takes a minute and lifts that to ~1,000.</p>
-      <div class="row-btns"><button class="btn small primary" onClick=${() => goTo('settings')}>Set it up</button>
+      <div class="row-btns"><button class="btn small primary" onClick=${() => goTo('settings', 'food-data')}>Set it up</button>
         <button class="btn small ghost" onClick=${() => { saveMeta({ usdaCardHidden: true }); emit(); }}>Later</button></div>
     </div>
   </section>`;
 }
 
-// Late in the day with lots of protein left: suggest the user's own protein-dense regulars.
-function ProteinNudge({ remP, date }) {
-  const foods = useMemo(() => proteinFriendlyFoods(3), [S.entries.length]);
-  if (date !== todayKey() || new Date().getHours() < 15 || remP < 40 || !foods.length) return null;
-  if (S.meta.nudgeHidden === todayKey()) return null;
-  return html`<section class="card nudge">
-    <div class="nudge-head"><span><b>${fmtInt(remP)} g</b> protein to go today. Quick wins from your regulars:</span>
-      <button class="icon-btn small" aria-label="Hide for today" onClick=${() => { saveMeta({ nudgeHidden: todayKey() }); emit(); }}><${Icon} n="x" size=${16} /></button></div>
-    <div class="chips">
-      ${foods.map(f => {
-        const a = defaultAmount(f);
-        const n = nutrientsFor(f.per100, a.qty * findUnit(f, a.unit).g);
-        return html`<button class="chip" onClick=${() => openSheet('food', { food: f, meal: mealForTime(), date })}>
-          ${f.name} <small>${fmtG(n.p)}g · ${fmtInt(n.kcal)} kcal</small></button>`;
-      })}
-    </div>
+// Late in the day with protein to go: one or two small combos that cover it within your calories. One tap adds.
+function FillGap({ date }) {
+  const gap = useMemo(() => fillTheGap(date), [S.entries.length, S.entries.reduce((s, e) => s + e.n.kcal, 0), date, S.profile.targets, new Date().getHours()]);
+  if (!gap || S.meta.gapHidden === todayKey()) return null;
+  async function add(o) {
+    const meal = mealForTime();
+    for (const i of o.items) if (!S.foods.has(i.food.id)) await upsertFood({ ...i.food, last: { qty: i.qty, unit: i.unit.key } });
+    const made = await addEntries(o.items.map(i => ({
+      date, meal, foodId: i.food.id, name: i.food.name, brand: i.food.brand || '',
+      qty: i.qty, unit: i.unit.key, unitLabel: i.unit.label, amount: amountText(i.qty, i.unit), grams: i.grams, n: i.n,
+    })));
+    toast(`Added to ${mealLabel(meal)} · ${fmtG(o.p)} g protein`, { label: 'Undo', fn: () => made.forEach(e => deleteEntry(e.id)) });
+  }
+  return html`<section class="card gap-card">
+    <header class="gap-head">
+      <span><b>Fill the gap</b><small>${fmtInt(gap.pLeft)} g protein and ${fmtInt(gap.kLeft)} kcal left today</small></span>
+      <button class="icon-btn small" aria-label="Hide for today" onClick=${() => { saveMeta({ gapHidden: todayKey() }); emit(); }}><${Icon} n="x" size=${16} /></button>
+    </header>
+    ${gap.options.map(o => html`<div class="gap-option">
+      <span class="gap-main"><b>${o.items.map(i => i.food.name).join(' + ')}</b>
+        <small>${o.items.map(i => amountText(i.qty, i.unit)).join(' · ')}</small>
+        <small><b class="gap-p">${fmtG(o.p)} g protein</b> · ${fmtInt(o.kcal)} kcal</small></span>
+      <button class="btn small" onClick=${() => add(o)} aria-label=${'Add ' + o.items.map(i => i.food.name).join(' and ')}><${Icon} n="plus" size=${16} /> Add</button>
+    </div>`)}
   </section>`;
 }
 
@@ -188,7 +198,8 @@ export function Today() {
       <${Icon} n="spark" /><span><b>Weekly check-in is ready</b><small>See how this week went and fine-tune your targets</small></span><${Icon} n="right" />
     </button>`}
 
-    <${ProteinNudge} remP=${t.protein - tot.p} date=${date} />
+    <${FillGap} date=${date} />
+    ${isToday && (hasUsdaKey() || S.meta.usdaCardHidden) && html`<${BackupCard} />`}
 
     ${MEALS.map(m => html`<${Meal} key=${m.id} meal=${m} date=${date} list=${list.filter(e => e.meal === m.id)} />`)}
   </div>`;

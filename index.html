@@ -14,6 +14,18 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+  // Paint the saved theme before the app loads (no flash of the wrong colors). See js/theme.js.
+  (function () {
+    var root = document.documentElement, a = {};
+    try { a = JSON.parse(localStorage.getItem('tally.appearance') || '{}'); } catch (e) {}
+    var mode = a.mode || 'system';
+    var dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-scheme', dark ? 'dark' : 'light');
+    var vars = a.vars && a.vars[dark ? 'dark' : 'light'];
+    if (vars) for (var k in vars) root.style.setProperty(k, vars[k]);
+  })();
+</script>
 <link rel="stylesheet" href="styles.css">
 <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/htm@3.1.1/preact/standalone.module.js" crossorigin>
 </head>

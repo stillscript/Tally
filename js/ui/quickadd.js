@@ -3,6 +3,7 @@ import { S, addEntry, updateEntry, deleteEntry, restoreEntry, toast } from '../s
 import { Sheet, MealPicker, NumField, Field } from './common.js';
 import { Icon } from './icons.js';
 import { closeSheet, closeAllSheets } from './nav.js';
+import { EntryActions } from './entry-actions.js';
 import { num, fmtInt, mealLabel, mealForTime } from '../util.js';
 
 // For restaurant meals or anything you only know the calories of.
@@ -51,5 +52,6 @@ export function QuickAddSheet({ meal: m0, date: d0, entry }) {
       <${NumField} label="Fat" value=${f} onInput=${setF} suffix="g" />
     </div>
     <div class="meal-pick"><span class="field-label">Meal</span><${MealPicker} value=${meal} onChange=${setMeal} /></div>
+    ${entry && html`<${EntryActions} entry=${entry} />`}
   <//>`;
 }

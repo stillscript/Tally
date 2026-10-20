@@ -1,16 +1,19 @@
-import { html, useState } from '../preact.js';
+import { html, useState, useRef, useEffect } from '../preact.js';
 import { S, upsertFood, toast } from '../store.js';
 import { normalizeBarcode } from '../barcode.js';
 import { assessQuality } from '../sources.js';
-import { Sheet, NumField, Field, Seg } from './common.js';
+import { hasAiKey, aiName, readLabel } from '../ai.js';
+import { prepareImage } from './ai.js';
+import { Sheet, NumField, Field, Seg, Note } from './common.js';
+import { Icon } from './icons.js';
 import { closeSheet, replaceSheet } from './nav.js';
 import { num, round, uid, fmtInt } from '../util.js';
 
 const r1 = v => (v == null ? '' : String(round(v, 1)));
 
-// Type values straight from the Nutrition Facts panel (per serving).
+// Type values straight from the Nutrition Facts panel (per serving), or snap it and let the AI fill them in.
 // Saved foods are marked "checked by you" and win over database data for that barcode.
-export function LabelSheet({ food, barcode, meal, date, then = 'back', fromScan }) {
+export function LabelSheet({ food, barcode, meal, date, then = 'back', fromScan, photo }) {
   const s0 = food?.servings?.[0];
   const size0 = s0?.g || 100;
   const per = k => (food?.per100?.[k] != null ? (food.per100[k] * size0) / 100 : null);
@@ -26,6 +29,40 @@ export function LabelSheet({ food, barcode, meal, date, then = 'back', fromScan 
     satFat: r1(per('satFat')), sodium: food?.per100?.sodium != null ? String(Math.round(per('sodium'))) : '',
   });
   const set = k => v => setF(x => ({ ...x, [k]: v }));
+  const [reading, setReading] = useState(false);
+  const [readBy, setReadBy] = useState('');
+  const cam = useRef(null);
+
+  async function readPhoto(file) {
+    setReading(true);
+    try {
+      const img = await prepareImage(file);
+      const r = await readLabel({ base64: img.base64 });
+      const size = r.servingG || r.servingMl;
+      setF(x => ({
+        ...x,
+        name: x.name || r.name,
+        brand: x.brand || r.brand,
+        desc: r.servingText ? r.servingText.replace(/\s*\([^)]*\)\s*$/, '') || x.desc : x.desc,
+        size: size ? r1(size) : x.size,
+        base: r.servingG ? 'g' : r.servingMl ? 'ml' : x.base,
+        kcal: r1(r.kcal), p: r1(r.protein), c: r1(r.carbs), fat: r1(r.fat),
+        fiber: r1(r.fiber), sugar: r1(r.sugar), addedSugar: r1(r.addedSugar), satFat: r1(r.satFat),
+        sodium: r.sodium != null ? String(Math.round(r.sodium)) : '',
+      }));
+      setReadBy(aiName());
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setReading(false);
+    }
+  }
+  useEffect(() => { if (photo) readPhoto(photo); }, []);
+  const pickPhoto = e => {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (file) readPhoto(file);
+  };
   const gtin14 = barcode ? normalizeBarcode(barcode)?.gtin14 || null : null;
 
   const est = 4 * (num(f.p) || 0) + 4 * (num(f.c) || 0) + 9 * (num(f.fat) || 0);
@@ -71,7 +108,11 @@ export function LabelSheet({ food, barcode, meal, date, then = 'back', fromScan 
 
   return html`<${Sheet} title=${food ? 'Correct from label' : 'Enter from label'}
       footer=${html`<button class="btn primary grow" onClick=${save}>Save food</button>`}>
-    <p class="muted small">Copy the numbers from the Nutrition Facts panel, per serving.${gtin14 ? ' Linked to barcode ' + (normalizeBarcode(barcode)?.display || '') + '.' : ''}</p>
+    ${hasAiKey() && html`<input ref=${cam} type="file" accept="image/*" capture="environment" hidden onChange=${pickPhoto} />
+      <button class="btn block label-read" onClick=${() => cam.current.click()} disabled=${reading}>
+        ${reading ? html`<span class="spinner small"></span> ${aiName()} is reading the label…` : html`<${Icon} n="camera" /> Snap the label, ${aiName()} fills it in`}</button>`}
+    ${readBy ? html`<${Note} tone="info">Filled in by ${readBy}. Check the numbers against the label before saving.<//>`
+      : html`<p class="muted small">Copy the numbers from the Nutrition Facts panel, per serving.${gtin14 ? ' Linked to barcode ' + (normalizeBarcode(barcode)?.display || '') + '.' : ''}</p>`}
     <${Field} label="Name"><input class="input" value=${f.name} onInput=${e => set('name')(e.currentTarget.value)} placeholder="e.g. Protein bar, chocolate" /><//>
     <${Field} label="Brand (optional)"><input class="input" value=${f.brand} onInput=${e => set('brand')(e.currentTarget.value)} /><//>
     <div class="grid2">

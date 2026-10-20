@@ -3,6 +3,8 @@ import { html, render, useEffect } from './preact.js';
 import { S, useStore, init, emit, toast, saveMeta } from './store.js';
 import { installCelebrations } from './ui/celebrate.js';
 import { preloadScanner } from './scanner.js';
+import { installUpright } from './upright.js';
+import './feedback.js';
 import { Today } from './ui/today.js';
 import { Progress } from './ui/progress.js';
 import { Settings } from './ui/settings.js';
@@ -89,7 +91,7 @@ function App() {
 }
 
 installCelebrations();
-init();
+init().then(installUpright);
 render(html`<${App} />`, document.getElementById('app'));
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {

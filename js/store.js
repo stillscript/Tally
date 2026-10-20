@@ -2,10 +2,28 @@
 import { useState, useEffect } from './preact.js';
 import { db } from './db.js';
 import { uid, todayKey } from './util.js';
+import { setAppearance } from './theme.js';
 
-const DEFAULT_SETTINGS = { units: 'imperial', usdaKey: '', region: 'united-states', tips: true, anthropicKey: '', aiModel: 'claude-opus-5-5' };
-// Secrets never go into backup files.
-const SECRET_SETTINGS = { usdaKey: '', anthropicKey: '' };
+const DEFAULT_SETTINGS = {
+  units: 'imperial', usdaKey: '', region: 'united-states', tips: true,
+  theme: 'green', appearance: 'system', keepUpright: true, scanFeedback: true,
+  // AI: the one service you chose, a key per service (only on this device), and an optional model choice per service.
+  aiProvider: '', aiKeys: {}, aiModels: {},
+};
+// Device-only settings: keys never go into backup files, and the AI choice follows the keys.
+const DEVICE_SETTINGS = ['usdaKey', 'aiKeys', 'aiProvider', 'aiModels'];
+
+export function normalizeSettings(raw = {}) {
+  const s = { ...DEFAULT_SETTINGS, ...raw, aiKeys: { ...(raw.aiKeys || {}) }, aiModels: { ...(raw.aiModels || {}) } };
+  // Versions before 3.0 stored a single Claude key.
+  if (raw.anthropicKey && !s.aiKeys.claude) s.aiKeys.claude = raw.anthropicKey;
+  if (raw.aiModel && !s.aiModels.claude) s.aiModels.claude = raw.aiModel;
+  if (raw.anthropicKey && !s.aiProvider) s.aiProvider = 'claude';
+  delete s.anthropicKey;
+  delete s.aiModel;
+  return s;
+}
+const syncAppearance = () => setAppearance({ theme: S.settings.theme, mode: S.settings.appearance });
 const freshMeta = () => ({ insights: {}, muted: {}, altSeen: {}, checkIns: [], lastCheckIn: null });
 
 export const S = {
@@ -114,7 +132,8 @@ export async function init() {
   try {
     const [kv, foods, entries, weights] = await Promise.all([db.kvAll(), db.all('foods'), db.all('entries'), db.all('weights')]);
     S.profile = kv.profile || null;
-    S.settings = { ...DEFAULT_SETTINGS, ...(kv.settings || {}) };
+    S.settings = normalizeSettings(kv.settings);
+    if (kv.settings && 'anthropicKey' in kv.settings) save('kv', S.settings, 'settings'); // keep the 3.0 layout
     S.meta = { ...freshMeta(), ...(kv.meta || {}) };
     S.altCache = kv.altCache || {};
     S.meals = kv.meals || [];
@@ -126,6 +145,7 @@ export async function init() {
     S.memoryOnly = true;
   }
   S.ready = true;
+  syncAppearance();
   emit();
   try {
     navigator.storage?.persist?.();
@@ -139,6 +159,7 @@ export async function saveProfile(p) {
 }
 export async function saveSettings(patch) {
   S.settings = { ...S.settings, ...patch };
+  if ('theme' in patch || 'appearance' in patch) syncAppearance();
   emit();
   await save('kv', S.settings, 'settings');
 }
@@ -245,7 +266,7 @@ export function exportData() {
     version: 1,
     exportedAt: new Date().toISOString(),
     profile: S.profile,
-    settings: { ...S.settings, ...SECRET_SETTINGS },
+    settings: Object.fromEntries(Object.entries(S.settings).filter(([k]) => !DEVICE_SETTINGS.includes(k))),
     meta: S.meta,
     meals: S.meals,
     foods: [...S.foods.values()],
@@ -256,8 +277,9 @@ export function exportData() {
 
 export async function importData(d) {
   if (!d || d.app !== 'tally' || !Array.isArray(d.entries)) throw new Error('This file isn’t a Tally backup.');
-  // Keep this device's keys; backups never contain them.
-  const settings = { ...DEFAULT_SETTINGS, ...(d.settings || {}), usdaKey: S.settings.usdaKey, anthropicKey: S.settings.anthropicKey };
+  // Keep this device's keys and AI choice; backups never contain them.
+  const settings = normalizeSettings({ ...(d.settings || {}), anthropicKey: '', aiModel: '' });
+  for (const k of DEVICE_SETTINGS) settings[k] = S.settings[k];
   const payload = {
     kv: { profile: d.profile, settings, meta: { ...freshMeta(), ...(d.meta || {}) }, meals: d.meals || [] },
     foods: d.foods || [],
@@ -267,6 +289,7 @@ export async function importData(d) {
   if (!S.memoryOnly) await db.replaceAll(payload);
   S.profile = d.profile || null;
   S.settings = settings;
+  syncAppearance();
   S.meta = payload.kv.meta;
   S.meals = payload.kv.meals;
   S.foods = new Map();
@@ -284,5 +307,6 @@ export async function eraseAll() {
     foods: new Map(), byBarcode: new Map(), entries: [], weights: [],
   });
   S.ui = { tab: 'today', date: todayKey(), sheets: [], toast: null };
+  syncAppearance();
   emit();
 }

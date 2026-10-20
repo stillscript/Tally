@@ -2,6 +2,20 @@
 
 Newest first. The same log is in the app under Settings → What’s new.
 
+## 3.0 — 2026-10-20
+
+- Choose your AI: Claude, ChatGPT, Gemini or Grok, with your own API key. Tally uses only the one you pick, and every feature works the same on each. Switch any time in Settings → AI assistant. Your Claude key carried over automatically.
+- Fix an AI-logged meal: tap it to say how much you ate, untick or resize items, or describe what was different (“Coke Zero instead”, “half the fries”) and recalculate.
+- Snap a nutrition label and your AI fills in the numbers for you. Offered when a barcode isn’t found, and in Create.
+- Fill the gap: from 2 pm, if protein is still short, Today suggests one or two quick combos from foods you actually eat. One tap adds them.
+- Duplicate an entry or copy it to today from its edit screen.
+- Eight color themes plus Light, Dark or System mode (Settings → Appearance). Every color is checked for readability in both modes.
+- Settings is now a short menu: Goal & profile, AI assistant, Food data, Appearance, Preferences and Your data.
+- Stays upright: the iPhone Home Screen app no longer flips sideways when you tilt the phone while scanning. You can turn this off in Preferences.
+- A soft tick and a green flash the moment a barcode scans.
+- A gentle monthly reminder to back up, and your last backup date in Settings → Your data.
+- Hints and macro labels are easier to read in light mode.
+
 ## 2.6 — 2026-10-16
 
 - Opening Tally in a browser now shows how to add it to your Home Screen (the recommended way to use it, and the way your data stays safe), with steps for iPhone and Android. Find it again under Settings → Add to Home Screen.

@@ -8,6 +8,7 @@
 // Barcode lookups query USDA and Open Food Facts in parallel, prefer USDA's label data,
 // borrow categories/images from Open Food Facts, and flag when the two disagree.
 import { S, saveAltCache } from './store.js';
+import { providerById } from './ai.js';
 import { normalizeBarcode } from './barcode.js';
 import { niceCase, round, fmtQty, G_PER_OZ, ML_PER_FLOZ } from './util.js';
 
@@ -30,9 +31,15 @@ export const SOURCE_LABEL = {
   off: 'Open Food Facts · community data',
   label: 'Manufacturer label',
   custom: 'Your entry',
-  ai: 'Claude estimate · from photo',
-  'ai-restaurant': 'Claude estimate · restaurant data',
 };
+
+// AI foods name the service that made them (foods from before 3.0 were all Claude).
+export function sourceLabel(food) {
+  if (food.source !== 'ai' && food.source !== 'ai-restaurant') return SOURCE_LABEL[food.source] || 'Database';
+  const who = providerById(food.aiBy || 'claude')?.name || 'AI';
+  const kind = food.source === 'ai-restaurant' ? 'restaurant' : food.aiKind || (food.aiItems ? 'photo' : 'text');
+  return `${who} estimate · ${{ restaurant: 'restaurant data', photo: 'from photo', text: 'from your description' }[kind] || 'from photo'}`;
+}
 
 export const usdaKey = () => (S.settings.usdaKey || '').trim() || 'DEMO_KEY';
 export const hasUsdaKey = () => usdaKey() !== 'DEMO_KEY';

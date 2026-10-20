@@ -7,6 +7,7 @@ import { Seg } from './common.js';
 import { Icon } from './icons.js';
 import { openSheet } from './nav.js';
 import { openAi, copySummary } from './ai.js';
+import { aiName, hasAiKey } from '../ai.js';
 import { todayKey, addDays, fmtInt, fmtW, wUnit, round, toDisplayWeight, parseKey, prettyDate } from '../util.js';
 
 export function Progress() {
@@ -51,11 +52,11 @@ export function Progress() {
     </section>
 
     <section class="card">
-      <header class="card-head"><h2>Ask Claude</h2></header>
+      <header class="card-head"><h2>Ask ${aiName()}</h2></header>
       <p class="small muted">Ask how your week went, what to change, or why the scale is doing what it’s doing. Answers are based on your actual log.</p>
       <div class="row-btns">
         <button class="btn small primary" onClick=${() => openAi('coach')}><${Icon} n="chat" size=${18} /> Ask a question</button>
-        <button class="btn small" onClick=${copySummary}><${Icon} n="copy" size=${18} /> Copy for a Claude chat</button>
+        <button class="btn small" onClick=${copySummary}><${Icon} n="copy" size=${18} /> Copy for ${hasAiKey() ? `a ${aiName()}` : 'an AI'} chat</button>
       </div>
     </section>
 

@@ -2,6 +2,7 @@ import { html, useState, useEffect, useRef } from '../preact.js';
 import { startScanner, scanErrorMessage } from '../scanner.js';
 import { normalizeBarcode } from '../barcode.js';
 import { toast } from '../store.js';
+import { scanTick, scanFeedbackOn } from '../feedback.js';
 import { Icon } from './icons.js';
 import { closeSheet, replaceSheet } from './nav.js';
 import { mealForTime } from '../util.js';
@@ -15,6 +16,7 @@ export function ScannerSheet({ meal = mealForTime(), date }) {
   const [hasTorch, setHasTorch] = useState(false);
   const [typing, setTyping] = useState(false);
   const [code, setCode] = useState('');
+  const [hit, setHit] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -22,7 +24,12 @@ export function ScannerSheet({ meal = mealForTime(), date }) {
       onCode: ({ raw, format }) => {
         if (!alive) return;
         ctl.current?.stop();
-        replaceSheet('food', { barcode: raw, format, meal, date, fromScan: true });
+        const go = () => replaceSheet('food', { barcode: raw, format, meal, date, fromScan: true });
+        if (!scanFeedbackOn()) return go();
+        // A quick tick and flash so you know it got it, then straight to the food.
+        scanTick();
+        setHit(true);
+        setTimeout(() => alive && go(), 220);
       },
     })
       .then(c => {
@@ -57,7 +64,7 @@ export function ScannerSheet({ meal = mealForTime(), date }) {
     } catch {}
   }
 
-  return html`<div class="scanner" role="dialog" aria-modal="true" aria-label="Scan a barcode">
+  return html`<div class=${'scanner' + (hit ? ' hit' : '')} role="dialog" aria-modal="true" aria-label="Scan a barcode">
     <video ref=${video} playsinline muted autoplay></video>
     <div class="scan-shade"></div>
     <div class="scan-top">

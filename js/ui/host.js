@@ -7,10 +7,11 @@ import { QuickAddSheet } from './quickadd.js';
 import { LabelSheet } from './label.js';
 import { WeightSheet } from './weight.js';
 import { CheckInSheet } from './checkin.js';
-import { ProfileSheet, TargetsSheet } from './settings.js';
+import { ProfileSheet, TargetsSheet, PreferencesSheet, FoodDataSheet, DataSheet } from './settings.js';
+import { AppearanceSheet } from './appearance.js';
 import { TargetsInfoSheet } from './explain.js';
 import { SaveMealSheet, MealTemplateSheet } from './meals.js';
-import { AiSetupSheet, PhotoSheet, RestaurantSheet, CoachSheet } from './ai.js';
+import { AiSetupSheet, PhotoSheet, RestaurantSheet, CoachSheet, AiEntrySheet } from './ai.js';
 import { VoiceSheet } from './voice.js';
 import { WhatsNewSheet } from './whatsnew.js';
 import { ScoreInfoSheet } from './week.js';
@@ -25,6 +26,10 @@ const SHEETS = {
   checkin: CheckInSheet,
   profile: ProfileSheet,
   targets: TargetsSheet,
+  preferences: PreferencesSheet,
+  'food-data': FoodDataSheet,
+  'your-data': DataSheet,
+  appearance: AppearanceSheet,
   'targets-info': TargetsInfoSheet,
   'save-meal': SaveMealSheet,
   'meal-template': MealTemplateSheet,
@@ -32,6 +37,7 @@ const SHEETS = {
   photo: PhotoSheet,
   restaurant: RestaurantSheet,
   coach: CoachSheet,
+  'ai-entry': AiEntrySheet,
   voice: VoiceSheet,
   'whats-new': WhatsNewSheet,
   'score-info': ScoreInfoSheet,

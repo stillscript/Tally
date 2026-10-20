@@ -1,16 +1,19 @@
 import { html, useState, useRef } from '../preact.js';
-import { S, saveProfile, saveSettings, saveMeta, exportData, importData, eraseAll, toast } from '../store.js';
-import { computeTargets, latestTrendKg, formulaTdee, paceOf, ACTIVITY, lifts } from '../goals.js';
-import { AI_MODELS, hasAiKey } from '../ai.js';
+import { S, saveProfile, saveSettings, saveMeta, importData, eraseAll, toast } from '../store.js';
+import { computeTargets, latestTrendKg, formulaTdee, paceOf, lifts } from '../goals.js';
+import { currentProvider, hasAiKey, modelLabel, aiName } from '../ai.js';
 import { copySummary } from './ai.js';
+import { appearanceLabel } from './appearance.js';
+import { exportBackup, backupLabel, backupOverdue } from './backup.js';
 import { previewCelebration } from './celebrate.js';
 import { isStandalone, showInstallAgain } from './install.js';
 import { verifyUsdaKey, hasUsdaKey } from '../sources.js';
 import { Sheet, Seg, Field, NumField, Note } from './common.js';
+import { applyUpright } from '../upright.js';
 import { Icon } from './icons.js';
 import { openSheet, closeSheet } from './nav.js';
 import { AboutYou, GoalFields, draftFromProfile, validate, heightCm } from './profile-form.js';
-import { fmtInt, fmtW, wUnit, num, todayKey, fromDisplayWeight } from '../util.js';
+import { fmtInt, fmtW, wUnit, num, fromDisplayWeight } from '../util.js';
 
 // Ask the browser to look for a newer version right now (it otherwise checks on its own schedule).
 async function checkForUpdate() {
@@ -32,68 +35,23 @@ const REGIONS = [
   { value: 'australia', label: 'Australia' },
   { value: 'world', label: 'Anywhere' },
 ];
+const ON_OFF = [{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }];
+
+function Row({ icon, title, sub, warn, onClick }) {
+  return html`<button class="menu-row" onClick=${onClick}>
+    <span class="menu-icon"><${Icon} n=${icon} size=${20} /></span>
+    <span class="menu-main"><b>${title}</b>${sub && html`<small class=${warn ? 'warn-text' : ''}>${sub}</small>`}</span>
+    <${Icon} n="right" size=${18} />
+  </button>`;
+}
 
 export function Settings() {
   const p = S.profile;
   const units = S.settings.units;
-  const [key, setKey] = useState(S.settings.usdaKey || '');
-  const [keyState, setKeyState] = useState(null);
-  const file = useRef(null);
-
-  async function saveKey() {
-    const k = key.trim();
-    if (!k) {
-      await saveSettings({ usdaKey: '' });
-      setKeyState(null);
-      return toast('Using the shared demo key');
-    }
-    setKeyState('checking');
-    const r = await verifyUsdaKey(k);
-    if (r.ok || r.code === 'rate') {
-      await saveSettings({ usdaKey: k });
-      setKeyState('ok');
-      toast('USDA key saved');
-    } else setKeyState(r.code === 'key' ? 'bad' : 'net');
-  }
-
-  async function doExport() {
-    const name = `tally-backup-${todayKey()}.json`;
-    const blob = new Blob([JSON.stringify(exportData())], { type: 'application/json' });
-    const f = new File([blob], name, { type: 'application/json' });
-    if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [f] })) {
-      try {
-        await navigator.share({ files: [f], title: 'Tally backup' });
-        return;
-      } catch (e) {
-        if (e.name === 'AbortError') return;
-      }
-    }
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement('a'), { href: url, download: name });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-  }
-
-  async function doImport(e) {
-    const f = e.currentTarget.files?.[0];
-    e.currentTarget.value = '';
-    if (!f) return;
-    try {
-      const data = JSON.parse(await f.text());
-      if (!confirm(`Replace everything on this device with the backup from ${String(data.exportedAt || '').slice(0, 10) || 'this file'}?`)) return;
-      await importData(data);
-      toast('Backup restored');
-    } catch (err) {
-      toast(err.message || 'Couldn’t read that file');
-    }
-  }
-
-  async function doErase() {
-    if (!confirm('Erase all of your Tally data on this device? This can’t be undone.')) return;
-    await eraseAll();
-  }
+  const ai = currentProvider();
+  const region = REGIONS.find(r => r.value === S.settings.region)?.label || 'United States';
+  const prefs = [units === 'imperial' ? 'lb' : 'kg', `food notes ${S.settings.tips === false ? 'off' : 'on'}`,
+    `celebrations ${S.settings.celebrate === false ? 'off' : 'on'}`].join(' · ');
 
   return html`<div class="settings">
     <h1 class="screen-title">Settings</h1>
@@ -111,76 +69,25 @@ export function Settings() {
       <button class="btn small ghost" onClick=${() => openSheet('targets-info')}><${Icon} n="info" size=${16} /> How these are set</button>
     </section>
 
-    <section class="card">
-      <header class="card-head"><h2>Claude</h2>
-        <button class="btn small" onClick=${() => openSheet('ai-setup')}>${hasAiKey() ? 'Change' : 'Connect'}</button></header>
-      <p class="small">${hasAiKey()
-        ? html`Connected · ${AI_MODELS.find(m => m.id === S.settings.aiModel)?.label || S.settings.aiModel}. Meal photos, restaurant lookups and “Ask Claude” are on.`
-        : 'Connect your Anthropic API key to estimate meals from photos, look up restaurant orders, and ask questions about your progress.'}</p>
-      <button class="btn small ghost" onClick=${copySummary}><${Icon} n="copy" size=${16} /> Copy my log for a Claude chat (free)</button>
-    </section>
+    <div class="menu-group">
+      <${Row} icon="target" title="Goal & profile" onClick=${() => openSheet('profile')}
+        sub=${`Goal ${fmtW(p.goalWeightKg, units)} ${wUnit(units)} · ${paceOf(p).label} pace · ${lifts(p) ? 'lifts weights' : 'no lifting'}`} />
+      <${Row} icon="spark" title="AI assistant" onClick=${() => openSheet('ai-setup')}
+        sub=${hasAiKey() ? (modelLabel(ai).startsWith(ai.name) ? modelLabel(ai) : `${ai.name} · ${modelLabel(ai)}`) : 'Not connected: photos, restaurants, labels, questions'} />
+      <${Row} icon="apple" title="Food data" onClick=${() => openSheet('food-data')}
+        sub=${`${hasUsdaKey() ? 'Personal USDA key' : 'Shared demo key (limited)'} · ${region}`} warn=${!hasUsdaKey()} />
+    </div>
 
-    <section class="card">
-      <header class="card-head"><h2>Goal & profile</h2>
-        <button class="btn small" onClick=${() => openSheet('profile')}>Edit</button></header>
-      <p>Goal <b>${fmtW(p.goalWeightKg, units)} ${wUnit(units)}</b> · ${paceOf(p).label} pace · ${ACTIVITY.find(a => a.id === p.activity)?.label} · ${lifts(p) ? 'lifts weights' : 'no lifting'}</p>
-    </section>
+    <div class="menu-group">
+      <${Row} icon="palette" title="Appearance" sub=${appearanceLabel()} onClick=${() => openSheet('appearance')} />
+      <${Row} icon="settings" title="Preferences" sub=${prefs} onClick=${() => openSheet('preferences')} />
+    </div>
 
-    <section class="card">
-      <header class="card-head"><h2>Preferences</h2></header>
-      <${Field} label="Units">
-        <${Seg} label="Units" value=${units} onChange=${v => saveSettings({ units: v })}
-          options=${[{ value: 'imperial', label: 'lb' }, { value: 'metric', label: 'kg' }]} />
-      <//>
-      <${Field} label="Food notes & lighter swaps" hint="Short, occasional notes when something is unusually fatty, salty or sugary — and protein-friendly swaps from the same aisle.">
-        <${Seg} label="Food notes" value=${S.settings.tips === false ? 'off' : 'on'} onChange=${v => saveSettings({ tips: v === 'on' })}
-          options=${[{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} />
-      <//>
-      ${Object.keys(S.meta.muted || {}).length > 0 && html`<button class="btn small ghost" onClick=${() => { saveMeta({ muted: {} }); toast('Notes re-enabled for all foods'); }}>
-        Un-hide ${Object.keys(S.meta.muted).length} muted food${Object.keys(S.meta.muted).length > 1 ? 's' : ''}</button>`}
-      <${Field} label="Celebrations" hint="Confetti when you hit your protein or fiber goal, a sparkle for protein-packed foods. Holidays get their own look.">
-        <div class="row-btns tight">
-          <${Seg} label="Celebrations" value=${S.settings.celebrate === false ? 'off' : 'on'} onChange=${v => saveSettings({ celebrate: v === 'on' })}
-            options=${[{ value: 'on', label: 'On' }, { value: 'off', label: 'Off' }]} />
-          <button class="btn small ghost" onClick=${previewCelebration}>Preview</button>
-        </div>
-      <//>
-      <${Field} label="Where you shop" hint="Product search and lighter swaps only show products sold here.">
-        <select class="input" value=${S.settings.region} onChange=${e => saveSettings({ region: e.currentTarget.value })}>
-          ${REGIONS.map(r => html`<option value=${r.value}>${r.label}</option>`)}
-        </select>
-      <//>
-    </section>
-
-    <section class="card">
-      <header class="card-head"><h2>Food data</h2></header>
-      <p class="small">Barcodes are checked against <b>USDA FoodData Central</b> (manufacturer label data, the most reliable source for US products) and <b>Open Food Facts</b> (worldwide, community-maintained) at the same time.</p>
-      ${!hasUsdaKey() && html`<${Note} tone="info">You’re on USDA’s shared demo key, which allows only a handful of lookups per hour. A free personal key takes a minute and allows about 1,000 per hour.<//>`}
-      <${Field} label="USDA API key">
-        <span class="input-wrap">
-          <input class="input mono" value=${key} placeholder="Paste your key" autocomplete="off" autocapitalize="off" spellcheck="false"
-            onInput=${e => { setKey(e.currentTarget.value); setKeyState(null); }} />
-        </span>
-      <//>
-      ${keyState === 'bad' && html`<p class="error small">USDA rejected that key. Check it was copied fully.</p>`}
-      ${keyState === 'net' && html`<p class="error small">Couldn’t reach USDA to check the key. Try again when online.</p>`}
-      <div class="row-btns">
-        <button class="btn small primary" onClick=${saveKey} disabled=${keyState === 'checking'}>${keyState === 'checking' ? 'Checking…' : 'Save key'}</button>
-        <a class="btn small ghost" href="https://fdc.nal.usda.gov/api-key-signup/" target="_blank" rel="noopener">Get a free key <${Icon} n="ext" size=${16} /></a>
-      </div>
-    </section>
-
-    <section class="card">
-      <header class="card-head"><h2>Your data</h2></header>
-      <p class="small muted">Everything stays on this device — no account, nothing uploaded. Export a backup now and then, especially before switching phones.</p>
-      <div class="row-btns">
-        <button class="btn small" onClick=${doExport}><${Icon} n="download" size=${18} /> Export backup</button>
-        <button class="btn small" onClick=${() => file.current.click()}><${Icon} n="upload" size=${18} /> Restore</button>
-        <input ref=${file} type="file" accept="application/json,.json" hidden onChange=${doImport} />
-      </div>
-      ${S.memoryOnly && html`<${Note} tone="warn">This browser is blocking storage (private mode?), so nothing will be kept after you close it.<//>`}
-      <button class="btn small danger-text" onClick=${doErase}>Erase all data</button>
-    </section>
+    <div class="menu-group">
+      <${Row} icon="data" title="Your data" sub=${S.memoryOnly ? 'Not being saved on this browser' : backupLabel()}
+        warn=${S.memoryOnly || backupOverdue()} onClick=${() => openSheet('your-data')} />
+      <${Row} icon="copy" title=${`Copy my log for ${hasAiKey() ? `a ${aiName()}` : 'an AI'} chat`} sub="Free: paste it into any chat and ask away" onClick=${copySummary} />
+    </div>
 
     <p class="muted small credits">Food data: USDA FoodData Central (public domain) and Open Food Facts (ODbL, openfoodfacts.org). Targets use the Mifflin-St Jeor equation and adapt to your logged intake and weight trend. Not medical advice.</p>
     <footer class="app-version">
@@ -190,6 +97,114 @@ export function Settings() {
       ${!isStandalone() && html`<button class="link" onClick=${showInstallAgain}>Add to Home Screen</button>`}
     </footer>
   </div>`;
+}
+
+export function PreferencesSheet() {
+  const s = S.settings;
+  const touch = matchMedia('(pointer: coarse)').matches;
+  return html`<${Sheet} title="Preferences">
+    <div class="field"><span class="field-label">Units</span>
+      <${Seg} label="Units" value=${s.units} onChange=${v => saveSettings({ units: v })}
+        options=${[{ value: 'imperial', label: 'lb' }, { value: 'metric', label: 'kg' }]} />
+    </div>
+    <div class="field"><span class="field-label">Food notes & lighter swaps</span>
+      <${Seg} label="Food notes" value=${s.tips === false ? 'off' : 'on'} onChange=${v => saveSettings({ tips: v === 'on' })} options=${ON_OFF} />
+      <span class="field-hint">Short, occasional notes when something is unusually fatty, salty or sugary, and protein-friendly swaps from the same aisle.</span>
+      ${Object.keys(S.meta.muted || {}).length > 0 && html`<button class="btn small ghost" onClick=${() => { saveMeta({ muted: {} }); toast('Notes re-enabled for all foods'); }}>
+        Un-hide ${Object.keys(S.meta.muted).length} muted food${Object.keys(S.meta.muted).length > 1 ? 's' : ''}</button>`}
+    </div>
+    <div class="field"><span class="field-label">Celebrations</span>
+      <div class="row-btns tight">
+        <${Seg} label="Celebrations" value=${s.celebrate === false ? 'off' : 'on'} onChange=${v => saveSettings({ celebrate: v === 'on' })} options=${ON_OFF} />
+        <button class="btn small ghost" onClick=${previewCelebration}>Preview</button>
+      </div>
+      <span class="field-hint">Confetti when you hit your protein or fiber goal, a sparkle for protein-packed foods. Holidays get their own look.</span>
+    </div>
+    <div class="field"><span class="field-label">Scan sound & flash</span>
+      <${Seg} label="Scan sound and flash" value=${s.scanFeedback === false ? 'off' : 'on'} onChange=${v => saveSettings({ scanFeedback: v === 'on' })} options=${ON_OFF} />
+      <span class="field-hint">A soft tick and a green flash the moment a barcode is read. The tick follows your phone’s silent switch.</span>
+    </div>
+    ${touch && html`<div class="field"><span class="field-label">Keep upright</span>
+      <${Seg} label="Keep upright" value=${s.keepUpright === false ? 'off' : 'on'} onChange=${v => saveSettings({ keepUpright: v === 'on' }).then(applyUpright)} options=${ON_OFF} />
+      <span class="field-hint">Tally stays in portrait when you tilt your phone, so it doesn’t flip around while you scan.</span>
+    </div>`}
+  <//>`;
+}
+
+export function FoodDataSheet() {
+  const [key, setKey] = useState(S.settings.usdaKey || '');
+  const [keyState, setKeyState] = useState(null);
+  async function saveKey() {
+    const k = key.trim();
+    if (!k) {
+      await saveSettings({ usdaKey: '' });
+      setKeyState(null);
+      return toast('Using the shared demo key');
+    }
+    setKeyState('checking');
+    const r = await verifyUsdaKey(k);
+    if (r.ok || r.code === 'rate') {
+      await saveSettings({ usdaKey: k });
+      setKeyState('ok');
+      toast('USDA key saved');
+    } else setKeyState(r.code === 'key' ? 'bad' : 'net');
+  }
+  return html`<${Sheet} title="Food data">
+    <p class="small">Barcodes are checked against <b>USDA FoodData Central</b> (manufacturer label data, the most reliable source for US products) and <b>Open Food Facts</b> (worldwide, community-maintained) at the same time.</p>
+    ${!hasUsdaKey() && html`<${Note} tone="info">You’re on USDA’s shared demo key, which allows only a handful of lookups per hour. A free personal key takes a minute and allows about 1,000 per hour.<//>`}
+    <${Field} label="USDA API key">
+      <span class="input-wrap">
+        <input class="input mono" value=${key} placeholder="Paste your key" autocomplete="off" autocapitalize="off" spellcheck="false"
+          onInput=${e => { setKey(e.currentTarget.value); setKeyState(null); }} />
+      </span>
+    <//>
+    ${keyState === 'bad' && html`<p class="error small">USDA rejected that key. Check it was copied fully.</p>`}
+    ${keyState === 'net' && html`<p class="error small">Couldn’t reach USDA to check the key. Try again when online.</p>`}
+    <div class="row-btns">
+      <button class="btn small primary" onClick=${saveKey} disabled=${keyState === 'checking'}>${keyState === 'checking' ? 'Checking…' : 'Save key'}</button>
+      <a class="btn small ghost" href="https://fdc.nal.usda.gov/api-key-signup/" target="_blank" rel="noopener">Get a free key <${Icon} n="ext" size=${16} /></a>
+    </div>
+    <${Field} label="Where you shop" hint="Product search and lighter swaps only show products sold here.">
+      <select class="input" value=${S.settings.region} onChange=${e => saveSettings({ region: e.currentTarget.value })}>
+        ${REGIONS.map(r => html`<option value=${r.value}>${r.label}</option>`)}
+      </select>
+    <//>
+  <//>`;
+}
+
+export function DataSheet() {
+  const file = useRef(null);
+  async function doImport(e) {
+    const f = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (!confirm(`Replace everything on this device with the backup from ${String(data.exportedAt || '').slice(0, 10) || 'this file'}?`)) return;
+      await importData(data);
+      toast('Backup restored');
+      closeSheet();
+    } catch (err) {
+      toast(err.message || 'Couldn’t read that file');
+    }
+  }
+  async function doErase() {
+    if (!confirm('Erase all of your Tally data on this device? This can’t be undone.')) return;
+    await eraseAll();
+  }
+  return html`<${Sheet} title="Your data">
+    <p class="small muted">Everything stays on this device: no account, nothing uploaded. Export a backup now and then, especially before switching phones. Backups never include your API keys.</p>
+    ${S.memoryOnly && html`<${Note} tone="warn">This browser is blocking storage (private mode?), so nothing will be kept after you close it.<//>`}
+    <p class=${'small' + (backupOverdue() ? ' warn-text' : '')}><b>${backupLabel()}</b></p>
+    <div class="row-btns">
+      <button class="btn small primary" onClick=${exportBackup}><${Icon} n="download" size=${18} /> Export backup</button>
+      <button class="btn small" onClick=${() => file.current.click()}><${Icon} n="upload" size=${18} /> Restore</button>
+      <input ref=${file} type="file" accept="application/json,.json" hidden onChange=${doImport} />
+    </div>
+    <div class="danger-zone">
+      <button class="btn small danger-text" onClick=${doErase}>Erase all data</button>
+    </div>
+  <//>`;
 }
 
 export function ProfileSheet() {

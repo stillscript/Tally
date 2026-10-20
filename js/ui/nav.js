@@ -29,11 +29,17 @@ export function closeAllSheets() {
   if (n) history.go(-n);
 }
 
+// Back to the top: the window normally, or the content area when the app is held upright sideways.
+function toTop() {
+  window.scrollTo(0, 0);
+  document.querySelector('main.screen')?.scrollTo?.(0, 0);
+}
+
 export function setTab(tab) {
   closeAllSheets();
   S.ui.tab = tab;
   emit();
-  window.scrollTo(0, 0);
+  toTop();
 }
 
 // Switch tab, then open a sheet there, waiting for open sheets to finish closing first
@@ -42,7 +48,7 @@ export function goTo(tab, sheet, props = {}) {
   const go = () => {
     S.ui.tab = tab;
     emit();
-    window.scrollTo(0, 0);
+    toTop();
     if (sheet) openSheet(sheet, props);
   };
   if (S.ui.sheets.length) {

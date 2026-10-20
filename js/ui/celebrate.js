@@ -6,7 +6,12 @@
 import { S, hooks, dayTotals } from '../store.js';
 import { todayKey, hash } from '../util.js';
 
-const BASE = { name: 'default', colors: ['#22c55e', '#6f95ff', '#f2b33d', '#f07198'], shapes: [], word: '' };
+// Default confetti uses your theme's accent plus the macro colors.
+const tokenColors = () => {
+  const cs = getComputedStyle(document.documentElement);
+  return ['--accent', '--protein', '--carbs', '--fat'].map(v => cs.getPropertyValue(v).trim()).filter(Boolean);
+};
+const BASE = { name: 'default', colors: null, shapes: [], word: '' };
 
 function nthWeekday(year, month, weekday, n) {
   const d = new Date(year, month, 1);
@@ -37,6 +42,7 @@ const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').match
 function burst(size, theme) {
   if (reducedMotion()) return;
   const n = size === 'big' ? 70 : size === 'medium' ? 36 : 16;
+  const colors = theme.colors || tokenColors();
   const layer = document.createElement('div');
   layer.className = 'confetti';
   const ring = document.querySelector('.ring-wrap')?.getBoundingClientRect();
@@ -53,7 +59,7 @@ function burst(size, theme) {
     const angle = Math.random() * Math.PI * 2;
     const dist = spread * (0.35 + Math.random() * 0.65);
     p.style.cssText = `--x0:${x0}px;--y0:${y0}px;--dx:${Math.cos(angle) * dist}px;--dy:${Math.sin(angle) * dist + (size === 'small' ? 20 : 140)}px;`
-      + `--r:${Math.round(Math.random() * 720 - 360)}deg;--c:${theme.colors[i % theme.colors.length]};--d:${900 + Math.random() * (size === 'small' ? 300 : 900)}ms`;
+      + `--r:${Math.round(Math.random() * 720 - 360)}deg;--c:${colors[i % colors.length]};--d:${900 + Math.random() * (size === 'small' ? 300 : 900)}ms`;
     layer.appendChild(p);
   }
   document.body.appendChild(layer);

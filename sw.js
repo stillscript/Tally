@@ -14,6 +14,9 @@ const SHELL = [
   './js/ui/onboarding.js', './js/ui/profile-form.js', './js/ui/explain.js', './js/ui/meals.js', './js/ui/ai.js',
   './js/ui/voice.js', './js/ui/whatsnew.js', './js/ui/celebrate.js', './js/parse.js', './js/changelog.js',
   './js/week.js', './js/ui/week.js', './js/ui/install.js',
+  './js/theme.js', './js/fillgap.js', './js/feedback.js', './js/upright.js',
+  './js/ai/http.js', './js/ai/claude.js', './js/ai/responses.js', './js/ai/gemini.js',
+  './js/ui/appearance.js', './js/ui/entry-actions.js', './js/ui/backup.js',
 ];
 const CDN_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net'];
 const CDN_PRELOAD = [

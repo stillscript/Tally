@@ -1,12 +1,15 @@
 import { html, useState, useEffect } from '../preact.js';
 import { S, dayTotals, upsertFood, addEntry, updateEntry, deleteEntry, restoreEntry, toast } from '../store.js';
 import {
-  lookupBarcode, nutrientsFor, unitsFor, findUnit, defaultAmount, amountText, stepFor, SOURCE_LABEL, hasCore, hasUsdaKey,
+  lookupBarcode, nutrientsFor, unitsFor, findUnit, defaultAmount, amountText, stepFor, sourceLabel, hasCore, hasUsdaKey,
 } from '../sources.js';
 import { pickInsight, renderInsight, muteFood, wantsAlternatives, findAlternatives } from '../insights.js';
 import { Sheet, MealPicker, Stepper, Note } from './common.js';
 import { Icon } from './icons.js';
 import { openSheet, replaceSheet, closeSheet, closeAllSheets } from './nav.js';
+import { EntryActions } from './entry-actions.js';
+import { hasAiKey, aiName } from '../ai.js';
+import { SourceLinks } from './ai.js';
 import { fmtInt, fmtG, mealLabel, mealForTime, num, prettyDate, round } from '../util.js';
 
 // A food rebuilt from an entry if its record has gone missing.
@@ -138,7 +141,11 @@ export function FoodSheet({ food: given, barcode, format, entry, meal: givenMeal
           : html`<p class="muted">Neither USDA nor Open Food Facts has <b>${errors?.code}</b> yet. Add it once from the label and it’ll be instant next time.</p>`}
       ${rate && !hasUsdaKey() && html`<${Note} tone="warn">USDA’s shared demo key hit its hourly limit. Add your free personal key in Settings for full coverage.<//>`}
       <div class="stack">
-        ${status === 'notfound' && html`<button class="btn primary block" onClick=${() => replaceSheet('label', { barcode: errors?.code, meal, date, then: 'food', fromScan })}>
+        ${status === 'notfound' && hasAiKey() && html`<label class="btn primary block">
+          <input type="file" accept="image/*" capture="environment" hidden
+            onChange=${e => { const photo = e.currentTarget.files?.[0]; if (photo) replaceSheet('label', { barcode: errors?.code, meal, date, then: 'food', fromScan, photo }); }} />
+          <${Icon} n="camera" /> Snap the label, ${aiName()} fills it in</label>`}
+        ${status === 'notfound' && html`<button class=${'btn block' + (hasAiKey() ? '' : ' primary')} onClick=${() => replaceSheet('label', { barcode: errors?.code, meal, date, then: 'food', fromScan })}>
           <${Icon} n="edit" /> Enter from the label</button>`}
         <button class="btn block" onClick=${() => replaceSheet('scanner', { meal, date })}><${Icon} n="scan" /> Scan again</button>
         <button class="btn ghost block" onClick=${() => replaceSheet('add', { meal, date })}><${Icon} n="search" /> Search by name</button>
@@ -171,7 +178,7 @@ export function FoodSheet({ food: given, barcode, format, entry, meal: givenMeal
         ${food.brand && html`<div class="food-brand">${food.brand}</div>`}
         <div class="badges">
           ${food.verified ? html`<span class="badge ok"><${Icon} n="check" size=${14} /> Checked by you</span>`
-            : html`<span class=${'badge src ' + food.source}>${SOURCE_LABEL[food.source] || 'Database'}</span>`}
+            : html`<span class=${'badge src ' + food.source}>${sourceLabel(food)}</span>`}
         </div>
       </div>
     </div>
@@ -180,7 +187,7 @@ export function FoodSheet({ food: given, barcode, format, entry, meal: givenMeal
     ${!incomplete && !food.verified && (q.includes('mismatch') || q.includes('impossible') || q.includes('off-flagged')) && html`<${Note} tone="warn">
       These numbers don’t add up (calories vs. protein/carbs/fat). It may be fiber or sugar alcohols, or a data error — worth a glance at the label.<//>`}
     ${(food.aiNotes || food.sources?.length) && html`<p class="muted small ai-note">${food.aiNotes || ''}
-      ${(food.sources || []).slice(0, 3).map(u => { let h = u; try { h = new URL(u).hostname.replace(/^www\./, ''); } catch {} return html` <a href=${u} target="_blank" rel="noopener">${h}</a>`; })}</p>`}
+      <${SourceLinks} sources=${food.sources} max=${3} /></p>`}
     ${!food.verified && food.conflict && html`<${Note} tone="info">
       ${food.conflict.source} lists ${fmtInt(food.conflict.kcal100)} kcal per 100 ${food.base} instead of ${fmtInt(food.per100.kcal)}. USDA’s figure comes from the manufacturer; if your label differs, tap the pencil.<//>`}
 
@@ -242,5 +249,6 @@ export function FoodSheet({ food: given, barcode, format, entry, meal: givenMeal
     </details>
 
     <div class="meal-pick"><span class="field-label">Meal</span><${MealPicker} value=${meal} onChange=${setMeal} /></div>
+    ${entry && html`<${EntryActions} entry=${entry} />`}
   <//>`;
 }
